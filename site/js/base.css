@@ -1,0 +1,44 @@
+/* Sala de Mesa: visual da opção A (tela cheia), escuro e com pouca cor. Um só visual, não muda com o tema do aparelho. */
+:root{
+  --bg:#0b0b0d; --ink:#f1efe9; --mute:#a9a69d; --line:#2a2c31; --card:#17181c; --campo:#1d1f24; --borda:#3a3c43;
+  --erro:#e7a08a; --ok:#a9c9a0;
+  --f-disp:"Spectral",Georgia,serif; --f-ui:"Atkinson Hyperlegible",system-ui,-apple-system,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:16px/1.5 var(--f-ui);-webkit-text-size-adjust:100%}
+[hidden]{display:none!important}
+.pag{max-width:560px;margin:0 auto;padding:max(18px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(40px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:grid;gap:26px}
+h1{font:600 30px/1.15 var(--f-disp);margin:0;text-wrap:balance}
+h2{font:600 20px/1.2 var(--f-disp);margin:0 0 10px;text-wrap:balance}
+p{margin:0}
+a{color:inherit}
+.mute{color:var(--mute)}
+.nota{color:var(--mute);font-size:14px}
+.topo{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.lnk{background:none;border:0;color:var(--mute);font:inherit;font-size:15px;padding:6px 0;cursor:pointer;text-decoration:none}
+.bt{display:block;width:100%;border-radius:12px;padding:13px 0;text-align:center;font:700 16px/1.2 var(--f-ui);background:var(--ink);color:var(--bg);border:1px solid var(--ink);cursor:pointer;text-decoration:none}
+.bt.sec{background:transparent;color:var(--ink);border-color:var(--borda)}
+.bt:disabled{opacity:.45;cursor:default}
+.bt.conf,.mini-bt.conf{background:#5a2a22;border-color:#5a2a22;color:var(--ink)}
+.duas{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.campo{display:grid;gap:5px}
+.campo span{font-size:14px;color:var(--mute)}
+input,select{width:100%;font:16px var(--f-ui);color:var(--ink);background:var(--campo);border:1px solid var(--borda);border-radius:10px;padding:11px 12px}
+input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.form{display:grid;gap:12px}
+.caixa{background:var(--card);border-radius:14px;padding:14px;display:grid;gap:12px}
+.msg{font-size:14px;min-height:1em}
+.msg.erro{color:var(--erro)}.msg.ok{color:var(--ok)}
+.lista{display:grid}
+.item{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);background:none;border-left:0;border-right:0;border-top:0;color:inherit;font:inherit;text-align:left;width:100%;cursor:pointer;text-decoration:none}
+.item b{font-weight:700}
+.item small{grid-column:1;color:var(--mute);font-size:14px}
+.item .seta{grid-row:1/3;grid-column:2;color:var(--mute)}
+.vazio{color:var(--mute);padding:6px 0 2px}
+.tag{font-size:12px;font-weight:700;border:1px solid var(--borda);border-radius:10px;padding:2px 8px;color:var(--mute)}
+.mini-bt{background:transparent;color:var(--ink);border:1px solid var(--borda);border-radius:9px;padding:6px 10px;font:700 13px var(--f-ui);cursor:pointer;text-decoration:none;white-space:nowrap}
+.marca{font:600 34px/1.1 var(--f-disp)}
+.codigo{font:600 34px/1 var(--f-disp);letter-spacing:.12em}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

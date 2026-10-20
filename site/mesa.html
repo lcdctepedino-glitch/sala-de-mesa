@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<link rel="icon" href="data:,">
+<title>Mesa · Sala de Mesa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="js/base.css">
+<style>
+.doc{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.doc .acoes{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.doc b{font-weight:700;overflow-wrap:anywhere}
+.doc small{display:block;color:var(--mute);font-size:13px}
+</style>
+</head>
+<body>
+<main class="pag">
+  <a class="lnk" href="index.html">‹ Início</a>
+  <div style="display:grid;gap:4px"><h1 id="m-nome">Mesa</h1><p class="mute" id="m-papel"></p></div>
+  <p class="msg erro" id="m-erro" hidden></p>
+  <a class="bt" id="bt-sala" href="#">Abrir a sala</a>
+
+  <section id="s-convite" hidden>
+    <h2>Convite</h2>
+    <div class="caixa">
+      <div class="codigo" id="m-cod"></div>
+      <p class="nota">Os jogadores entram em Início → Entrar numa mesa, digitam este código e escolhem o personagem.</p>
+      <button class="bt sec" id="bt-copiar" type="button">Copiar código</button>
+    </div>
+  </section>
+
+  <section>
+    <h2>Na mesa</h2>
+    <div class="lista" id="l-gente"></div>
+  </section>
+
+  <section>
+    <h2>Documentos</h2>
+    <p class="nota" id="docs-nota" style="margin-bottom:6px"></p>
+    <div id="l-docs"></div>
+    <div id="docs-mestre" hidden style="margin-top:14px;display:grid;gap:8px">
+      <button class="bt sec" id="bt-doc" type="button">Enviar documento</button>
+      <p class="msg" id="doc-msg" role="status"></p>
+      <input type="file" id="arq-doc" hidden accept="image/*,.pdf,.txt,.md,.docx,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+    </div>
+  </section>
+</main>
+
+<script src="js/supabase.js"></script>
+<script src="js/comum.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const M = smParam("m");
+let EU, MESA, MESTRE = false;
+
+function erro(t) { const e = $("#m-erro"); e.textContent = t; e.hidden = !t }
+
+async function carregar() {
+  EU = (await smExigirLogin()).user;
+  const { data, error } = await sb.from("mesas").select("id,nome,mestre_id,codigo").eq("id", M).maybeSingle();
+  if (error || !data) { erro("Não achei essa mesa, ou você não está nela."); $("#bt-sala").hidden = true; return }
+  MESA = data; MESTRE = data.mestre_id === EU.id;
+  document.title = data.nome + " · Sala de Mesa";
+  $("#m-nome").textContent = data.nome;
+  $("#bt-sala").href = "sala.html?m=" + M;
+  $("#s-convite").hidden = !MESTRE; $("#docs-mestre").hidden = !MESTRE;
+  if (MESTRE) $("#m-cod").textContent = data.codigo;
+  $("#docs-nota").textContent = MESTRE
+    ? "Documentos novos ficam só com você. Toque em Liberar para a mesa toda ver."
+    : "Documentos que o mestre liberou para a mesa.";
+  await Promise.all([pessoas(), documentos()]);
+}
+
+async function pessoas() {
+  const { data: fichas } = await sb.from("fichas").select("nome,dono_id").eq("mesa_id", M);
+  const ids = [MESA.mestre_id, ...(fichas || []).map(f => f.dono_id)];
+  const { data: jog } = await sb.from("jogadores").select("id,nome").in("id", ids);
+  const nome = {}; (jog || []).forEach(j => nome[j.id] = j.nome);
+  const l = $("#l-gente"); l.textContent = "";
+  $("#m-papel").textContent = MESTRE ? "Você é o mestre." : "Mestre: " + (nome[MESA.mestre_id] || "—");
+  l.append(smEl("div", { class: "item", style: "cursor:default" }, smEl("b", {}, nome[MESA.mestre_id] || "Mestre"), smEl("small", {}, "mestre")));
+  (fichas || []).forEach(f => l.append(smEl("div", { class: "item", style: "cursor:default" }, smEl("b", {}, f.nome), smEl("small", {}, nome[f.dono_id] || ""))));
+  if (!MESTRE) l.append(smEl("p", { class: "nota", style: "margin-top:8px" }, "Você vê aqui o seu personagem. As fichas dos outros jogadores ficam só com eles e com o mestre."));
+  else if (!(fichas || []).length) l.append(smEl("p", { class: "vazio" }, "Nenhum jogador entrou ainda. Passe o código do convite."));
+}
+
+async function documentos() {
+  const l = $("#l-docs"); l.textContent = "";
+  const pastas = MESTRE ? [["mestre", "só você vê"], ["jogadores", "liberado"]] : [["jogadores", ""]];
+  let arqs = [];
+  try {
+    for (const [p, rot] of pastas) (await smListar(M + "/" + p)).forEach(f => arqs.push({ caminho: M + "/" + p + "/" + f.name, nome: f.name, pasta: p, rot, quando: f.created_at }));
+  } catch (x) { l.append(smEl("p", { class: "msg erro" }, "Não consegui ler os documentos agora.")); return }
+  arqs.sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
+  if (!arqs.length) { l.append(smEl("p", { class: "vazio" }, MESTRE ? "Nenhum documento ainda." : "O mestre ainda não liberou nenhum documento.")); return }
+  const { data: urls } = await sb.storage.from("mesas").createSignedUrls(arqs.map(a => a.caminho), 3600);
+  const url = {}; (urls || []).forEach(u => url[u.path] = u.signedUrl);
+  arqs.forEach(a => {
+    const acoes = smEl("div", { class: "acoes" }, smEl("a", { class: "mini-bt", href: url[a.caminho] || "#", target: "_blank", rel: "noopener" }, "Abrir"));
+    if (MESTRE) {
+      const outra = a.pasta === "mestre" ? "jogadores" : "mestre";
+      acoes.append(
+        smEl("button", { class: "mini-bt", type: "button", onclick: async e => { e.currentTarget.disabled = true; const { error } = await sb.storage.from("mesas").move(a.caminho, M + "/" + outra + "/" + a.nome); if (error) docMsg("Não consegui mudar: " + error.message, true); documentos() } }, a.pasta === "mestre" ? "Liberar" : "Esconder"),
+        smEl("button", { class: "mini-bt", type: "button", onclick: e => smConfirmar(e.currentTarget, "Apagar?", async () => { await sb.storage.from("mesas").remove([a.caminho]); documentos() }) }, "Apagar"));
+    }
+    l.append(smEl("div", { class: "doc" }, smEl("div", {}, smEl("b", {}, smNomeLegivel(a.nome)), a.rot ? smEl("small", {}, a.rot) : null), acoes));
+  });
+}
+
+function docMsg(t, ruim) { const m = $("#doc-msg"); m.className = "msg" + (ruim ? " erro" : ""); m.textContent = t }
+$("#bt-doc").onclick = () => $("#arq-doc").click();
+$("#arq-doc").onchange = async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+  docMsg("Enviando " + f.name + "…");
+  const corpo = await smReduzir(f);
+  const nome = smNomeArquivo(f.name, corpo !== f ? "jpg" : null);
+  const { error } = await sb.storage.from("mesas").upload(M + "/mestre/" + nome, corpo, { contentType: corpo.type || f.type });
+  if (error) { docMsg(/mime|type/i.test(error.message) ? "Esse tipo de arquivo não é aceito. Use PDF, Word, texto ou imagem." : /size|large/i.test(error.message) ? "Arquivo grande demais (máximo 20 MB)." : "Não consegui enviar: " + error.message, true); return }
+  docMsg("Enviado. Ele fica só com você até você tocar em Liberar.");
+  documentos();
+};
+$("#bt-copiar").onclick = async e => {
+  const b = e.currentTarget;
+  try { await navigator.clipboard.writeText(MESA.codigo); b.textContent = "Copiado" } catch (x) { b.textContent = "Código: " + MESA.codigo }
+  setTimeout(() => b.textContent = "Copiar código", 2500);
+};
+
+carregar().catch(x => { if (x.message !== "sem login") erro("Algo deu errado ao abrir a mesa. Tente de novo.") });
+</script>
+</body>
+</html>

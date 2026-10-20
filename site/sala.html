@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<link rel="icon" href="data:,">
+<title>Sala · Sala de Mesa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="js/base.css">
+<style>
+/* Opção A: a imagem ocupa a tela; uma pílula no alto; o mestre troca a imagem por uma gaveta embaixo */
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+#palco{position:fixed;inset:0;touch-action:none;overflow:hidden;background:var(--bg);user-select:none;-webkit-user-select:none}
+#cena{position:absolute;inset:0;transform-origin:0 0;will-change:transform}
+#cena img{width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;-webkit-user-drag:none}
+#vazio{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--mute)}
+#vazio b{display:block;font:600 20px/1.3 var(--f-disp);color:var(--ink);margin-bottom:6px}
+.pilula{position:fixed;z-index:5;top:calc(10px + env(safe-area-inset-top,0px));left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));
+  display:flex;align-items:center;gap:10px;background:rgba(11,11,13,.74);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:22px;padding:6px 8px 6px 6px}
+.pilula a,.pilula button{color:var(--ink);background:none;border:0;font:inherit;cursor:pointer;text-decoration:none}
+.pilula .volta{font-size:22px;line-height:1;padding:4px 10px}
+.pilula .tit{flex:1;min-width:0;display:grid}
+.pilula .tit b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pilula .tit small{color:var(--mute);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pilula .troca{border:1px solid var(--borda)!important;border-radius:16px;padding:6px 12px;font-weight:700;font-size:14px}
+#dica{position:fixed;z-index:4;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 32px);bottom:calc(14px + env(safe-area-inset-bottom,0px));text-align:center;color:var(--ink);font-size:13px;pointer-events:none;transition:opacity .6s;
+  background:rgba(11,11,13,.78);border-radius:14px;padding:6px 12px}
+body.mestre #dica{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
+/* gaveta do mestre */
+#gaveta{position:fixed;z-index:6;left:0;right:0;bottom:0;background:var(--card);border-radius:18px 18px 0 0;
+  padding:8px max(14px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px));display:grid;gap:10px;max-height:72vh}
+#gaveta .alca{width:100%;background:none;border:0;color:var(--ink);font:700 15px var(--f-ui);display:grid;gap:8px;justify-items:center;padding:2px 0 4px;cursor:pointer}
+#gaveta .alca i{width:38px;height:4px;border-radius:2px;background:var(--borda)}
+#gaveta .alca span{justify-self:start}
+#g-corpo{display:grid;gap:10px;overflow:auto;min-height:0}
+.minis{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
+.mini{position:relative;aspect-ratio:1;border-radius:9px;overflow:hidden;border:2px solid transparent;background:var(--campo);padding:0;cursor:pointer}
+.mini img{width:100%;height:100%;object-fit:cover;display:block}
+.mini.sel{border-color:var(--ink)}
+.mini .na-tela{position:absolute;left:4px;bottom:4px;font:700 10px var(--f-ui);background:var(--ink);color:var(--bg);border-radius:6px;padding:1px 5px}
+.mini.sel .na-tela{box-shadow:0 0 0 1px var(--bg)}
+#ficha{position:fixed;inset:0;z-index:3;border:0;width:100%;height:100%;background:var(--bg)}
+</style>
+</head>
+<body>
+<div id="palco"><div id="cena"><img id="img" alt=""></div>
+  <div id="vazio"><div><b id="vazio-t">Carregando a sala…</b><span id="vazio-s"></span></div></div>
+</div>
+<iframe id="ficha" title="Sua ficha" hidden></iframe>
+<div class="pilula">
+  <a class="volta" id="bt-volta" href="index.html" aria-label="Voltar para a mesa">‹</a>
+  <div class="tit"><b id="t-nome">Sala</b><small id="t-sub"></small></div>
+  <button class="troca" id="bt-troca" type="button" hidden>Ficha</button>
+</div>
+<div id="dica" hidden>dois dedos para dar zoom · toque duas vezes para voltar</div>
+
+<section id="gaveta" hidden aria-label="Suas imagens">
+  <button class="alca" id="g-alca" type="button" aria-expanded="false"><i></i><span>Suas imagens</span></button>
+  <div id="g-corpo" hidden>
+    <div class="minis" id="g-minis"></div>
+    <p class="msg" id="g-msg" role="status"></p>
+    <button class="bt" id="bt-mostrar" type="button" disabled>Mostrar para todos</button>
+    <button class="bt sec" id="bt-enviar" type="button">Enviar imagem</button>
+    <input type="file" id="arq" accept="image/*" hidden>
+  </div>
+</section>
+
+<script src="js/supabase.js"></script>
+<script src="js/comum.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const M = smParam("m");
+let EU, MESA, MESTRE = false, NOME = "", MINHA_FICHA = null, ATUAL = null, SEL = null, CANAL = null;
+
+/* ---------- imagem na tela ---------- */
+async function mostrarImagem(caminho, titulo) {
+  if (caminho === ATUAL) { $("#t-sub").dataset.tit = titulo || ""; atualizarSub(); return }
+  ATUAL = caminho; $("#t-sub").dataset.tit = titulo || ""; atualizarSub();
+  if (!caminho) { $("#img").removeAttribute("src"); vazio(true); return }
+  try {
+    const u = await smImagem(caminho);
+    if (caminho !== ATUAL) return;
+    $("#img").src = u; resetZoom(); vazio(false);
+    if (!sessionStorage.getItem("dica")) { const d = $("#dica"); d.hidden = false; setTimeout(() => d.style.opacity = 0, 3500); try { sessionStorage.setItem("dica", "1") } catch (e) { } }
+  } catch (e) { vazio(true, "Não consegui baixar a imagem.", "Confira a internet. Ela aparece sozinha quando a conexão voltar.") }
+  marcarNaTela();
+}
+function vazio(sim, t, s) {
+  $("#vazio").hidden = !sim; $("#cena").hidden = sim;
+  if (sim) {
+    $("#vazio-t").textContent = t || "O mestre ainda não mostrou nenhuma imagem.";
+    $("#vazio-s").textContent = s || (MESTRE ? "Abra Suas imagens, embaixo, para mostrar a primeira." : "Ela aparece aqui sozinha.");
+  }
+}
+let PESSOAS = 1;
+function atualizarSub() { const t = $("#t-sub").dataset.tit; $("#t-sub").textContent = [t, PESSOAS + " na sala"].filter(Boolean).join(" · ") }
+
+/* ---------- zoom e arrastar ---------- */
+const palco = $("#palco"), cena = $("#cena");
+let z = { s: 1, x: 0, y: 0 }, ini = null, ultimoToque = 0;
+const pts = new Map();
+function aplicar() {
+  if (z.s <= 1.001) z = { s: 1, x: 0, y: 0 };
+  else { const w = palco.clientWidth, h = palco.clientHeight; z.x = Math.min(0, Math.max(w - w * z.s, z.x)); z.y = Math.min(0, Math.max(h - h * z.s, z.y)) }
+  cena.style.transform = `translate(${z.x}px,${z.y}px) scale(${z.s})`;
+}
+function resetZoom() { z = { s: 1, x: 0, y: 0 }; aplicar() }
+function estado() {
+  const p = [...pts.values()];
+  if (p.length >= 2) { const [a, b] = p; return { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, z: { ...z } } }
+  if (p.length === 1) return { x: p[0].x, y: p[0].y, z: { ...z } };
+  return null;
+}
+palco.addEventListener("pointerdown", e => {
+  palco.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); ini = estado();
+  if (pts.size === 1) { const t = Date.now(); if (t - ultimoToque < 300) resetZoom(); ultimoToque = t }
+});
+palco.addEventListener("pointermove", e => {
+  if (!pts.has(e.pointerId)) return;
+  pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  const p = [...pts.values()];
+  if (p.length >= 2 && ini && ini.d) {
+    const [a, b] = p, d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    const s = Math.min(6, Math.max(1, ini.z.s * d / ini.d));
+    z = { s, x: cx - s * (ini.cx - ini.z.x) / ini.z.s, y: cy - s * (ini.cy - ini.z.y) / ini.z.s };
+  } else if (p.length === 1 && ini && ini.x !== undefined) {
+    z = { s: ini.z.s, x: ini.z.x + (p[0].x - ini.x), y: ini.z.y + (p[0].y - ini.y) };
+  }
+  aplicar();
+});
+const solta = e => { pts.delete(e.pointerId); ini = estado() };
+palco.addEventListener("pointerup", solta); palco.addEventListener("pointercancel", solta);
+palco.addEventListener("wheel", e => {
+  e.preventDefault();
+  const s = Math.min(6, Math.max(1, z.s * Math.exp(-e.deltaY / 400)));
+  z = { s, x: e.clientX - s * (e.clientX - z.x) / z.s, y: e.clientY - s * (e.clientY - z.y) / z.s }; aplicar();
+}, { passive: false });
+addEventListener("resize", aplicar);
+document.addEventListener("gesturestart", e => e.preventDefault());
+
+/* ---------- ficha (ideia 3: ficha e mapa na mesma tela) ---------- */
+$("#bt-troca").onclick = () => {
+  const f = $("#ficha"), abrir = f.hidden;
+  if (abrir && !f.src) f.src = "criador.html?embed=1&f=" + encodeURIComponent(MINHA_FICHA);
+  f.hidden = !abrir; $("#bt-troca").textContent = abrir ? "Mapa" : "Ficha";
+  if (MESTRE) $("#gaveta").hidden = abrir;
+};
+
+/* ---------- gaveta do mestre ---------- */
+let MINIS = [];
+$("#g-alca").onclick = () => { const c = $("#g-corpo"), abrir = c.hidden; c.hidden = !abrir; $("#g-alca").setAttribute("aria-expanded", abrir); if (abrir) carregarMinis() };
+async function carregarMinis() {
+  const box = $("#g-minis");
+  let arqs;
+  try { arqs = await smListar(M + "/mapas") } catch (e) { gMsg("Não consegui ler as suas imagens.", true); return }
+  MINIS = arqs.map(a => ({ caminho: M + "/mapas/" + a.name, nome: a.name }));
+  box.textContent = "";
+  if (!MINIS.length) { box.append(smEl("p", { class: "vazio", style: "grid-column:1/-1" }, "Nenhuma imagem ainda. Envie a primeira.")); return }
+  for (const m of MINIS) {
+    const bt = smEl("button", { class: "mini", type: "button", "aria-label": smNomeLegivel(m.nome), onclick: () => selecionar(m.caminho) }, smEl("img", { alt: "" }));
+    bt.dataset.c = m.caminho; box.append(bt);
+    smImagem(m.caminho).then(u => bt.firstChild.src = u).catch(() => { });
+  }
+  if (!SEL) SEL = ATUAL; marcarNaTela();
+}
+function selecionar(c) { SEL = c; marcarNaTela() }
+function marcarNaTela() {
+  document.querySelectorAll(".mini").forEach(b => {
+    b.classList.toggle("sel", b.dataset.c === SEL);
+    const ja = b.querySelector(".na-tela"); if (ja) ja.remove();
+    if (b.dataset.c === ATUAL) b.append(smEl("span", { class: "na-tela" }, "na tela"));
+  });
+  const bt = $("#bt-mostrar");
+  bt.disabled = !SEL || SEL === ATUAL;
+  bt.textContent = SEL && SEL === ATUAL ? "Esta já está na tela" : "Mostrar para todos";
+}
+function gMsg(t, ruim) { const m = $("#g-msg"); m.className = "msg" + (ruim ? " erro" : ""); m.textContent = t }
+$("#bt-mostrar").onclick = async () => {
+  if (!SEL) return;
+  const { error } = await sb.from("mesas").update({ imagem_atual: SEL, imagem_titulo: smNomeLegivel(SEL.split("/").pop()) }).eq("id", M);
+  if (error) { gMsg("Não consegui mostrar: " + error.message, true); return }
+  gMsg(""); mostrarImagem(SEL, smNomeLegivel(SEL.split("/").pop()));
+};
+$("#bt-enviar").onclick = () => $("#arq").click();
+$("#arq").onchange = async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f) return;
+  gMsg("Preparando a imagem…");
+  const corpo = await smReduzir(f);
+  const caminho = M + "/mapas/" + smNomeArquivo(f.name, corpo !== f ? "jpg" : null);
+  gMsg("Enviando…");
+  const { error } = await sb.storage.from("mesas").upload(caminho, corpo, { contentType: corpo.type || f.type });
+  if (error) { gMsg(/size|large/i.test(error.message) ? "Imagem grande demais (máximo 20 MB)." : "Não consegui enviar: " + error.message, true); return }
+  gMsg("Enviada. Toque em Mostrar para todos quando quiser.");
+  SEL = caminho; await carregarMinis();
+};
+
+/* ---------- entrada ---------- */
+async function entrar() {
+  EU = (await smExigirLogin()).user;
+  const [mesa, eu, ficha] = await Promise.all([
+    sb.from("mesas").select("id,nome,mestre_id,imagem_atual,imagem_titulo").eq("id", M).maybeSingle(),
+    sb.from("jogadores").select("nome").eq("id", EU.id).maybeSingle(),
+    sb.from("fichas").select("pid:dados->>id").eq("mesa_id", M).eq("dono_id", EU.id).limit(1)
+  ]);
+  if (mesa.error || !mesa.data) { vazio(true, "Não achei essa mesa, ou você não está nela.", "Volte ao início e entre com o código."); return }
+  MESA = mesa.data; MESTRE = MESA.mestre_id === EU.id; NOME = (eu.data && eu.data.nome) || "";
+  MINHA_FICHA = ficha.data && ficha.data[0] && ficha.data[0].pid;
+  document.title = MESA.nome + " · Sala de Mesa";
+  $("#t-nome").textContent = MESA.nome; $("#bt-volta").href = "mesa.html?m=" + M;
+  $("#bt-troca").hidden = !MINHA_FICHA;
+  document.body.classList.toggle("mestre", MESTRE); $("#gaveta").hidden = !MESTRE;
+  await mostrarImagem(MESA.imagem_atual, MESA.imagem_titulo);
+  if (!MESA.imagem_atual) vazio(true);
+
+  CANAL = sb.channel("sala-" + M, { config: { presence: { key: EU.id } } })
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "mesas", filter: "id=eq." + M }, p => { if (p.new) mostrarImagem(p.new.imagem_atual, p.new.imagem_titulo) })
+    .on("presence", { event: "sync" }, () => { PESSOAS = Math.max(1, Object.keys(CANAL.presenceState()).length); atualizarSub() })
+    .subscribe(async st => { if (st === "SUBSCRIBED") await CANAL.track({ nome: NOME, mestre: MESTRE }) });
+}
+/* ao voltar para a aba, confere se o mestre trocou a imagem enquanto o celular dormia */
+document.addEventListener("visibilitychange", async () => {
+  if (document.hidden || !MESA) return;
+  const { data } = await sb.from("mesas").select("imagem_atual,imagem_titulo").eq("id", M).maybeSingle();
+  if (data) mostrarImagem(data.imagem_atual, data.imagem_titulo);
+});
+entrar().catch(x => { if (x.message !== "sem login") vazio(true, "Algo deu errado ao abrir a sala.", "Volte e tente de novo.") });
+</script>
+</body>
+</html>

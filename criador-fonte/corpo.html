@@ -1,0 +1,61 @@
+<div class="app">
+  <p class="aviso gut" id="aviso-geral" hidden></p>
+
+  <section id="t-inicio" hidden>
+    <div class="gut topo-ini">
+      <h1>Criador de Personagens</h1>
+      <p class="mute" style="margin:4px 0 0">D&amp;D, regras de 2024. Crie o personagem passo a passo e use a ficha na mesa.</p>
+      <div class="linha" style="margin-top:14px"><button class="bt" id="bt-criar" type="button">Criar personagem</button></div>
+      <h2 style="font-size:21px;margin-top:22px;border-bottom:1px solid var(--line)">Meus personagens</h2>
+      <div class="cards" id="lista-pers"></div>
+      <h2 style="font-size:21px;margin-top:26px;border-bottom:1px solid var(--line)">Abrir ficha pelo texto</h2>
+      <div class="colar">
+        <p class="nota" style="margin:0">Recebeu uma ficha no WhatsApp ou perdeu a sua? Copie a mensagem inteira e cole aqui.</p>
+        <textarea id="colar-txt" placeholder="Cole aqui o texto da ficha" aria-label="Texto da ficha"></textarea>
+        <div class="linha"><button class="bt sec" id="bt-abrir-txt" type="button">Abrir ficha</button></div>
+        <p class="nota" id="st-colar" role="status"></p>
+      </div>
+      <p class="nota" style="margin-top:22px">As fichas ficam guardadas neste aparelho, neste navegador. Abra sempre pelo mesmo navegador e copie a ficha de vez em quando para não perder.</p>
+    </div>
+  </section>
+
+  <section id="t-criador" hidden>
+    <div class="wz-topo gut">
+      <div class="lin1"><h2 id="wz-t">Escolha a classe</h2></div>
+      <small id="wz-s">Passo 1</small>
+      <div class="prog"><i id="wz-prog" style="width:10%"></i></div>
+    </div>
+    <div class="wz-corpo gut" id="wz-corpo"></div>
+    <div class="wz-rod gut"><div class="in" style="flex-wrap:wrap"><span class="falta" id="wz-falta" role="status"></span><button class="bt sec" id="wz-voltar" type="button">Voltar</button><button class="bt" id="wz-prox" type="button">Próximo</button></div></div>
+  </section>
+
+  <section id="t-subir" hidden>
+    <div class="wz-topo gut">
+      <div class="lin1"><h2 id="sb-t">Subir de nível</h2></div>
+      <small id="sb-s"></small>
+    </div>
+    <div class="wz-corpo gut" id="sb-corpo"></div>
+    <div class="wz-rod gut"><div class="in" style="flex-wrap:wrap"><span class="falta" id="sb-falta" role="status"></span><button class="bt sec" id="sb-voltar" type="button">Cancelar</button><button class="bt" id="sb-ok" type="button">Confirmar</button></div></div>
+  </section>
+
+  <section id="t-ficha" hidden>
+    <nav class="abas gut" role="tablist">
+      <button data-t="ficha" role="tab" aria-selected="true" class="on">Ficha</button>
+      <button data-t="combate" role="tab" aria-selected="false">Combate</button>
+      <button data-t="bg" role="tab" aria-selected="false">Background</button>
+    </nav>
+    <div class="vida-fixa gut">
+      <div class="vida">
+        <div class="num" id="pv-num"><span id="pv-cur">0</span><small id="pv-max"> / 0 PV</small></div>
+        <div class="ctrl"><input type="number" id="pv-valor" inputmode="numeric" min="0" placeholder="valor" aria-label="Valor de dano, cura ou PV temporários"><button class="dano" id="bt-dano" type="button">Dano</button><button class="cura" id="bt-cura" type="button">Cura</button><button class="temp" id="bt-temp" type="button" aria-label="PV temporários">Temp</button></div>
+        <div class="barra"><i id="pv-barra" style="width:100%"></i></div>
+        <div class="tmp" id="pv-tmp" hidden></div>
+      </div>
+    </div>
+    <div class="gut barra-f"><button class="lnk" id="f-voltar" type="button">‹ Meus personagens</button></div>
+    <div class="gut" id="f-corpo"></div>
+    <input type="file" id="arq-img" accept="image/*" hidden>
+  </section>
+</div>
+<div class="veu" id="veu"></div>
+<div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-t"></div>

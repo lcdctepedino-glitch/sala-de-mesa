@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<link rel="icon" href="data:,">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Sala de Mesa">
+<title>Sala de Mesa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="js/base.css">
+</head>
+<body>
+<main class="pag" id="pag-login" hidden>
+  <div style="padding-top:8vh;display:grid;gap:6px">
+    <div class="marca">Sala de Mesa</div>
+    <p class="mute" id="login-sub">Entre com a sua conta.</p>
+  </div>
+  <form class="form" id="f-login" novalidate>
+    <label class="campo" id="c-nome" hidden><span>Seu nome na mesa</span><input id="in-nome" autocomplete="nickname" maxlength="40"></label>
+    <label class="campo"><span>E-mail</span><input id="in-email" type="email" autocomplete="email" inputmode="email" required></label>
+    <label class="campo"><span>Senha</span><input id="in-senha" type="password" autocomplete="current-password" minlength="6" required></label>
+    <p class="msg" id="login-msg" role="status"></p>
+    <button class="bt" id="bt-login" type="submit">Entrar</button>
+    <button class="lnk" id="bt-trocar" type="button">Ainda não tenho conta · criar conta</button>
+  </form>
+</main>
+
+<main class="pag" id="pag-inicio" hidden>
+  <div class="topo"><div class="marca" style="font-size:28px">Sala de Mesa</div><button class="lnk" id="bt-sair" type="button">Sair</button></div>
+  <p class="mute" id="ola"></p>
+
+  <section>
+    <h2>Minhas mesas</h2>
+    <div class="lista" id="l-mesas"></div>
+    <div class="duas" style="margin-top:14px">
+      <button class="bt" id="bt-entrar" type="button">Entrar numa mesa</button>
+      <button class="bt sec" id="bt-abrir" type="button">Abrir uma mesa</button>
+    </div>
+    <form class="caixa" id="f-entrar" hidden style="margin-top:12px">
+      <label class="campo"><span>Código que o mestre passou</span><input id="in-cod" autocapitalize="characters" autocomplete="off" maxlength="12" style="letter-spacing:.12em"></label>
+      <label class="campo"><span>Com qual personagem</span><select id="in-ficha"></select></label>
+      <p class="msg" id="entrar-msg" role="status"></p>
+      <button class="bt" type="submit">Entrar</button>
+    </form>
+    <form class="caixa" id="f-abrir" hidden style="margin-top:12px">
+      <label class="campo"><span>Nome da campanha</span><input id="in-mesa" maxlength="60" placeholder="Ex.: Masmorra de Pedra-Funda"></label>
+      <p class="nota">Você será o mestre. Depois é só passar o código da mesa para os jogadores.</p>
+      <p class="msg" id="abrir-msg" role="status"></p>
+      <button class="bt" type="submit">Abrir mesa</button>
+    </form>
+  </section>
+
+  <section>
+    <h2>Meus personagens</h2>
+    <div class="lista" id="l-fichas"></div>
+    <a class="bt sec" href="criador.html" style="margin-top:14px">Criar ou editar personagens</a>
+  </section>
+</main>
+
+<script src="js/supabase.js"></script>
+<script src="js/comum.js"></script>
+<script>
+let modoCadastro = false, EU = null, FICHAS = [];
+const $ = s => document.querySelector(s);
+
+function traduzErro(e) {
+  const m = String(e && e.message || e || "");
+  if (/Invalid login credentials/i.test(m)) return "E-mail ou senha errados.";
+  if (/Email not confirmed/i.test(m)) return "Falta confirmar o e-mail: abra a mensagem de confirmação que chegou na sua caixa de entrada.";
+  if (/already registered|already exists/i.test(m)) return "Já existe uma conta com esse e-mail. Toque em \"Já tenho conta\" e entre.";
+  if (/Password should be at least/i.test(m)) return "A senha precisa ter pelo menos 6 caracteres.";
+  if (/rate limit|too many/i.test(m)) return "Muitas tentativas seguidas. Espere alguns minutos e tente de novo.";
+  if (/valid email|invalid.*email/i.test(m)) return "Esse e-mail não parece válido.";
+  if (/Failed to fetch|NetworkError|network/i.test(m)) return "Sem conexão com a internet.";
+  return m || "Algo deu errado. Tente de novo.";
+}
+
+function telaLogin() {
+  $("#pag-inicio").hidden = true; $("#pag-login").hidden = false;
+  $("#c-nome").hidden = !modoCadastro;
+  $("#login-sub").textContent = modoCadastro ? "Crie a sua conta. Ela guarda os seus personagens e as suas mesas." : "Entre com a sua conta.";
+  $("#bt-login").textContent = modoCadastro ? "Criar conta" : "Entrar";
+  $("#bt-trocar").textContent = modoCadastro ? "Já tenho conta · entrar" : "Ainda não tenho conta · criar conta";
+  $("#in-senha").autocomplete = modoCadastro ? "new-password" : "current-password";
+}
+$("#bt-trocar").onclick = () => { modoCadastro = !modoCadastro; $("#login-msg").textContent = ""; telaLogin() };
+
+$("#f-login").onsubmit = async e => {
+  e.preventDefault();
+  const msg = $("#login-msg"), bt = $("#bt-login");
+  const email = $("#in-email").value.trim(), senha = $("#in-senha").value, nome = $("#in-nome").value.trim();
+  msg.className = "msg erro";
+  if (!email || !senha) { msg.textContent = "Preencha o e-mail e a senha."; return }
+  if (modoCadastro && !nome) { msg.textContent = "Escreva o seu nome na mesa."; return }
+  if (senha.length < 6) { msg.textContent = "A senha precisa ter pelo menos 6 caracteres."; return }
+  bt.disabled = true; msg.className = "msg"; msg.textContent = modoCadastro ? "Criando a conta…" : "Entrando…";
+  try {
+    if (modoCadastro) {
+      const { data, error } = await sb.auth.signUp({ email, password: senha, options: { data: { nome }, emailRedirectTo: location.origin + location.pathname } });
+      if (error) throw error;
+      if (!data.session) { msg.className = "msg ok"; msg.textContent = "Conta criada. Abra o e-mail de confirmação que chegou para você e depois entre aqui."; modoCadastro = false; telaLogin(); return }
+    } else {
+      const { error } = await sb.auth.signInWithPassword({ email, password: senha });
+      if (error) throw error;
+    }
+    msg.textContent = "";
+    await depoisDoLogin();
+  } catch (x) { msg.className = "msg erro"; msg.textContent = traduzErro(x) }
+  finally { bt.disabled = false }
+};
+
+$("#bt-sair").onclick = async () => { await sb.auth.signOut(); EU = null; modoCadastro = false; telaLogin() };
+
+async function depoisDoLogin() {
+  const volta = smParam("volta");
+  if (volta && /^[a-z]+\.html(\?[\w=&.%-]*)?$/.test(volta)) { location.replace(volta); return }
+  await telaInicio();
+}
+
+async function telaInicio() {
+  const s = await smSessao(); if (!s) { telaLogin(); return }
+  EU = s.user;
+  $("#pag-login").hidden = true; $("#pag-inicio").hidden = false;
+  const [jog, mesas, fichas] = await Promise.all([
+    sb.from("jogadores").select("nome").eq("id", EU.id).maybeSingle(),
+    sb.from("mesas").select("id,nome,mestre_id").order("criado_em", { ascending: false }),
+    sb.from("fichas").select("id,nome,mesa_id,pid:dados->>id").eq("dono_id", EU.id).order("criado_em", { ascending: false })
+  ]);
+  $("#ola").textContent = "Olá, " + ((jog.data && jog.data.nome) || EU.email) + ".";
+  FICHAS = fichas.data || [];
+  const nomeMesa = {}; (mesas.data || []).forEach(m => nomeMesa[m.id] = m.nome);
+
+  const lm = $("#l-mesas"); lm.textContent = "";
+  if (mesas.error) lm.append(smEl("p", { class: "msg erro" }, traduzErro(mesas.error)));
+  else if (!mesas.data.length) lm.append(smEl("p", { class: "vazio" }, "Você ainda não está em nenhuma mesa. Entre com o código que o mestre passou, ou abra a sua."));
+  else mesas.data.forEach(m => {
+    const minhas = FICHAS.filter(f => f.mesa_id === m.id).map(f => f.nome);
+    const papel = m.mestre_id === EU.id ? "Você é o mestre" : "Jogando com " + (minhas.join(", ") || "seu personagem");
+    lm.append(smEl("a", { class: "item", href: "mesa.html?m=" + m.id }, smEl("b", {}, m.nome), smEl("small", {}, papel), smEl("span", { class: "seta", "aria-hidden": "true" }, "›")));
+  });
+
+  const lf = $("#l-fichas"); lf.textContent = "";
+  if (!FICHAS.length) lf.append(smEl("p", { class: "vazio" }, "Nenhum personagem ainda. Crie o primeiro no criador."));
+  else FICHAS.forEach(f => lf.append(smEl("a", { class: "item", href: "criador.html?f=" + encodeURIComponent(f.pid || "") },
+    smEl("b", {}, f.nome || "Sem nome"), smEl("small", {}, f.mesa_id ? "Na mesa " + (nomeMesa[f.mesa_id] || "") : "Sem mesa"), smEl("span", { class: "seta", "aria-hidden": "true" }, "›"))));
+
+  const sel = $("#in-ficha"); sel.textContent = "";
+  FICHAS.forEach(f => sel.append(smEl("option", { value: f.id }, (f.nome || "Sem nome") + (f.mesa_id ? " (já está em " + (nomeMesa[f.mesa_id] || "outra mesa") + ")" : ""))));
+}
+
+$("#bt-entrar").onclick = () => { $("#f-abrir").hidden = true; $("#f-entrar").hidden = !$("#f-entrar").hidden;
+  $("#entrar-msg").className = "msg"; $("#entrar-msg").textContent = FICHAS.length ? "" : "Antes de entrar, crie um personagem em \"Criar ou editar personagens\".";
+  if (!$("#f-entrar").hidden) $("#in-cod").focus() };
+$("#bt-abrir").onclick = () => { $("#f-entrar").hidden = true; $("#f-abrir").hidden = !$("#f-abrir").hidden; if (!$("#f-abrir").hidden) $("#in-mesa").focus() };
+
+$("#f-entrar").onsubmit = async e => {
+  e.preventDefault();
+  const msg = $("#entrar-msg"); msg.className = "msg erro";
+  const cod = $("#in-cod").value.trim(), ficha = $("#in-ficha").value;
+  if (!FICHAS.length) { msg.textContent = "Crie um personagem primeiro."; return }
+  if (!cod) { msg.textContent = "Escreva o código da mesa."; return }
+  const { data, error } = await sb.rpc("entrar_na_mesa", { p_codigo: cod, p_ficha: ficha });
+  if (error) { msg.textContent = /não encontrado/.test(error.message) ? "Não achei mesa com esse código. Confira com o mestre." : traduzErro(error); return }
+  location.href = "mesa.html?m=" + data;
+};
+
+$("#f-abrir").onsubmit = async e => {
+  e.preventDefault();
+  const msg = $("#abrir-msg"); msg.className = "msg erro";
+  const nome = $("#in-mesa").value.trim();
+  if (!nome) { msg.textContent = "Dê um nome para a mesa."; return }
+  const { data, error } = await sb.from("mesas").insert({ nome }).select("id").single();
+  if (error) { msg.textContent = traduzErro(error); return }
+  location.href = "mesa.html?m=" + data.id;
+};
+
+(async () => { const s = await smSessao(); if (s) await depoisDoLogin(); else telaLogin() })();
+</script>
+</body>
+</html>
