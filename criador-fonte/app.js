@@ -28,7 +28,7 @@ function slotsTalento(P){const s=[];const a=AN(P);if(a)s.push({slot:"ant",k:a.ta
 function temTalento(P,k){return slotsTalento(P).some(s=>s.k===k)}
 function bonusAtr(P){const a=AN(P),b={};if(!a)return b;
   if(P.bonus.modo==="111")a.atr.forEach(x=>b[x]=1);else{if(P.bonus.mais2)b[P.bonus.mais2]=2;if(P.bonus.mais1)b[P.bonus.mais1]=(b[P.bonus.mais1]||0)+1}return b}
-function atrFinal(P){const b=bonusAtr(P),r={};ATR.forEach(x=>{r[x]=Math.min(20,(P.base[x]||8)+(b[x]||0)+(P.extras||[]).filter(k=>k===x).length)});return r}
+function atrFinal(P){const b=bonusAtr(P),r={};ATR.forEach(x=>{r[x]=Math.min(20,(P.base[x]||8)+(b[x]||0)+(P.extras||[]).filter(k=>k===x).length+(typeof bonusAsi==="function"?(bonusAsi(P)[x]||0):0))});return r}
 function MOD(P){const a=atrFinal(P),m={};ATR.forEach(x=>m[x]=mod(a[x]));return m}
 /* perícias: nome → fonte */
 function periciasFixas(P){const m=new Map();const a=AN(P);if(a)a.per.forEach(p=>m.set(p,"antecedente"));
@@ -92,7 +92,10 @@ function itensEquip(P){const out=[];let po=0;const c=CL(P),a=AN(P);
     else if(it[0]==="mesmo"){const v=it[1]==="ferrAnt"?P.ferrAnt:P.ferrClasse[0];out.push({t:"t",n:v||"(ferramenta escolhida)"})}});
   if(c&&P.eqC){if(P.eqC==="B")po+=c.equip.B;else{const o=c.equip[P.eqC];add(o.itens);po+=o.po}}
   if(a&&P.eqA){if(P.eqA==="B")po+=50;else{add(a.eq);po+=a.po}}
-  const j=[];out.forEach(x=>{const y=j.find(z=>z.t===x.t&&(z.k||z.n)===(x.k||x.n));if(y)y.q+=x.q||1;else j.push({...x,q:x.q||1})});return {itens:j,po}}
+  (P.compras||[]).forEach(c=>{if(c.t==="a"&&arma(c.k))out.push({t:"a",k:c.k,q:1});if(c.t==="r"&&armadura(c.k))out.push({t:"r",k:c.k,q:1})});
+  const j=[];out.forEach(x=>{const y=j.find(z=>z.t===x.t&&(z.k||z.n)===(x.k||x.n));if(y)y.q+=x.q||1;else j.push({...x,q:x.q||1})});
+  /* armas e armaduras do pacote que o jogador tirou (trocou por outra com o mestre) */
+  (P.tirados||[]).forEach(d=>{const y=j.find(z=>z.t===d.t&&z.k===d.k);if(y)y.q--});return {itens:j.filter(x=>x.q>0),po}}
 function armadurasDisp(P){return itensEquip(P).itens.filter(i=>i.t==="r").map(i=>i.k)}
 function caCalc(P){const m=MOD(P),j=P.jogo||{},disp=armadurasDisp(P),tr=treinoArmadura(P);
   const corpo=j.arm!==undefined?j.arm:(disp.find(k=>k!=="escudo"&&tr.includes(armadura(k)[2]))||null);
@@ -172,7 +175,7 @@ let passo=0,abertos={};
 const R=()=>DB.rasc;
 function mudou(){gravar();rPasso(true)}
 const PASSOS=[
- {id:"classe",t:"Escolha a classe",r:rClasse,ok:P=>P.classe?null:"escolher uma classe"},
+ {id:"classe",t:"Escolha a classe",r:rClasse,ok:P=>P.classe?null:"escolher uma classe",pular:P=>!!P._edit},
  {id:"ant",t:"Escolha o antecedente",r:rAnt,ok:P=>!P.ant?"escolher um antecedente":(AN(P).ferr.esc&&!P.ferrAnt)?"escolher a ferramenta do antecedente":null},
  {id:"esp",t:"Escolha a espécie",r:rEsp,ok:okEsp},
  {id:"idiomas",t:"Idiomas",r:rIdiomas,ok:P=>P.idiomas.length<2?"escolher 2 idiomas":(P.classe==="ladino"&&!P.idiomaExtra)?"escolher o idioma extra do Ladino":null},
@@ -190,11 +193,12 @@ function rPasso(manter){const P=R();if(!P){mostrar("inicio");return}const vs=vis
   $("#wz-prog").style.width=((i+1)/vs.length*100)+"%";
   const y=window.scrollY;const corpo=$("#wz-corpo");corpo.textContent="";p.r(corpo,P);if(manter)window.scrollTo(0,y);else window.scrollTo(0,0);
   const f=p.ok(P);$("#wz-falta").textContent=f?"Falta: "+f+".":"";$("#wz-prox").disabled=!!f;
-  $("#wz-prox").textContent=prox?"Próximo":"Criar ficha";$("#wz-voltar").textContent=i===0?"Cancelar":"Voltar"}
+  $("#wz-prox").textContent=prox?"Próximo":(P._edit?"Salvar as escolhas":"Criar ficha");$("#wz-voltar").textContent=i===0?"Cancelar":"Voltar"}
 function proximo(){const P=R(),vs=visiveis(),i=vs.indexOf(PASSOS[passo]);if(PASSOS[passo].ok(P))return;
   if(i<vs.length-1){passo=PASSOS.indexOf(vs[i+1]);P._passo=passo;gravar();rPasso()}else criarFicha()}
-function voltar(){const vs=visiveis(),i=vs.indexOf(PASSOS[passo]);if(i<=0){gravar(true);mostrar("inicio");return}passo=PASSOS.indexOf(vs[i-1]);R()._passo=passo;gravar();rPasso()}
-function criarFicha(){const P=R();P.jogo={pv:pvMax(P),temp:0,gastos:{},insp:P.esp==="humano"};delete P.jogo.arm;DB.lista[P.id]=P;DB.atual=P.id;DB.rasc=null;gravar(true);aba="ficha";mostrar("ficha")}
+function voltar(){const vs=visiveis(),i=vs.indexOf(PASSOS[passo]);if(i<=0){const P=R();if(P&&P._edit){delete P._edit;DB.rasc=null;gravar(true);mostrar("ficha");return}gravar(true);mostrar("inicio");return}passo=PASSOS.indexOf(vs[i-1]);R()._passo=passo;gravar();rPasso()}
+function criarFicha(){const P=R();if(P._edit){delete P._edit;delete P._passo;DB.lista[P.id]=P;DB.atual=P.id;DB.rasc=null;P.jogo=P.jogo||{pv:pvMax(P),temp:0,gastos:{}};P.jogo.pv=Math.min(P.jogo.pv,pvMax(P));gravar(true);aba="ficha";mostrar("ficha");return}
+  P.jogo={pv:pvMax(P),temp:0,gastos:{},insp:P.esp==="humano"};delete P.jogo.arm;DB.lista[P.id]=P;DB.atual=P.id;DB.rasc=null;gravar(true);aba="ficha";mostrar("ficha")}
 
 /* componentes do criador */
 function opcao(id,sel,cab,det,onSel){const ab=sel||abertos[id];const o=el("div",{class:"op"+(sel?" on":"")});
@@ -216,7 +220,7 @@ function rClasse(c,P){c.append(el("p",{class:"nota"},"Toque numa classe para ver
     cl.magia?tr("Magia",(cl.magia.truques?cl.magia.truques+" truques, ":"")+(cl.magia.grimorio?"grimório com 6 magias e ":"")+cl.magia.prep+" magias de nível 1 preparadas, usando "+ATR_N[cl.magia.atr]):null,
     el("p",{},el("b",{},"No nível 1:")),...cl.n1.map(f=>tr(f.n,f.x))],
     ()=>{if(P.classe!==k){Object.assign(P,{classe:k,perClasse:[],especial:[],estilo:null,ordem:null,invoc:null,maestrias:[],ferrClasse:[],eqC:null,truques:[],prep:[],grim:[],tomoT:[],tomoR:[],idiomaExtra:null});
-      P.base={FOR:null,DES:null,CON:null,INT:null,SAB:null,CAR:null};abertos={};mudou()}})))}
+      P.base={FOR:null,DES:null,CON:null,INT:null,SAB:null,CAR:null};abertos={};mudou()}},()=>{P.classe=null;mudou()})))}
 
 /* passo 2: antecedente */
 function rAnt(c,P){c.append(el("p",{class:"nota"},"O antecedente é o que o personagem fazia antes de se aventurar. Ele dá 3 atributos para os bônus, um talento, 2 perícias, uma ferramenta e equipamento."));
@@ -224,7 +228,7 @@ function rAnt(c,P){c.append(el("p",{class:"nota"},"O antecedente é o que o pers
     el("p",{},a.d),tr("Atributos para os bônus",lista(a.atr.map(x=>ATR_N[x]))),tr("Talento: "+t.n+(a.talOp?" ("+a.talOp+")":""),t.x),tr("Perícias",lista(a.per)),
     tr("Ferramenta",typeof a.ferr==="string"?a.ferr:{artesao:"uma Ferramenta de Artesão à escolha",instrumento:"um Instrumento Musical à escolha",jogo:"um Jogo à escolha"}[a.ferr.esc]),
     a.ferr.esc?el("div",{},el("p",{class:"cont"},"Escolha a ferramenta:"),chips({artesao:ARTESAO,instrumento:INSTRUMENTOS,jogo:JOGOS}[a.ferr.esc],P.ferrAnt?[P.ferrAnt]:[],1,n=>{P.ferrAnt=n[0]||null;mudou()})):null],
-    ()=>{if(P.ant!==k){P.ant=k;P.ferrAnt=null;P.eqA=null;P.bonus={modo:"21",mais2:null,mais1:null};P.tal.ant={};P.perClasse=P.perClasse.filter(x=>!a.per.includes(x));mudou()}}))})}
+    ()=>{if(P.ant!==k){P.ant=k;P.ferrAnt=null;P.eqA=null;P.bonus={modo:"21",mais2:null,mais1:null};P.tal.ant={};P.perClasse=P.perClasse.filter(x=>!a.per.includes(x));mudou()}},()=>{P.ant=null;mudou()}))})}
 
 /* passo 3: espécie */
 function okEsp(P){const e=ES(P);if(!e)return "escolher uma espécie";const ee=P.ee;
@@ -250,7 +254,7 @@ function rEsp(c,P){c.append(el("p",{class:"nota"},"A espécie dá traços do cor
       chips(e.per.de==="todas"?SK.map(s=>s[0]):e.per.de,ee.per?[ee.per]:[],1,n=>{P.perClasse=P.perClasse.filter(x=>x!==n[0]);fix({per:n[0]||null})},v=>ja.has(v)))}
     if(e.talExtra)l.push(el("p",{class:"cont"},"Versátil: escolha um talento de Origem"),chips(Object.entries(TALENTOS).map(([tk,t])=>[tk,t.n]),ee.talHum?[ee.talHum]:[],1,n=>{P.ee.talHum=n[0]||null;P.tal.hum={};mudou()},
       v=>AN(P)&&AN(P).tal===v&&!["iniciado","habilidoso"].includes(v)),ee.talHum?rico(TALENTOS[ee.talHum].x,"nota"):null);
-    return l},()=>{if(P.esp!==k){P.esp=k;P.ee={};P.tal.hum={};mudou()}})))}
+    return l},()=>{if(P.esp!==k){P.esp=k;P.ee={};P.tal.hum={};mudou()}},()=>{P.esp=null;mudou()})))}
 
 /* passo 4: idiomas */
 function rIdiomas(c,P){c.append(el("p",{class:"nota"},"Todo personagem fala Comum e mais 2 idiomas da lista padrão."));
@@ -324,7 +328,7 @@ function rCls(c,P){const cl=CL(P);
     const lst=f.esc==="estilo"?ESTILOS:f.esc==="ordem"?ORDEM_CLERIGO:f.esc==="ordemprimal"?ORDEM_DRUIDA:f.esc==="invocacao"?INVOCACOES:null;
     if(lst){const cur=f.esc==="estilo"?P.estilo:f.esc==="invocacao"?P.invoc:P.ordem;
       Object.entries(lst).forEach(([k,v])=>c.append(opcao("x:"+k,cur===k,[el("b",{},v[0]),el("span",{},k==="defesa"&&f.esc==="estilo"?"sugerido":""),el("em",{},linha1(v[1]))],()=>[rico(v[1])],
-        ()=>{if(f.esc==="estilo")P.estilo=k;else if(f.esc==="invocacao"){P.invoc=k;P.tomoT=[];P.tomoR=[]}else{P.ordem=k;P.truques=[]}mudou()})))}
+        ()=>{if(f.esc==="estilo")P.estilo=k;else if(f.esc==="invocacao"){P.invoc=k;P.tomoT=[];P.tomoR=[]}else{P.ordem=k;P.truques=[]}mudou()},()=>{if(f.esc==="estilo")P.estilo=null;else if(f.esc==="invocacao"){P.invoc=null;P.tomoT=[];P.tomoR=[]}else{P.ordem=null;P.truques=[]}mudou()})))}
     if(f.esc==="especial"){const tem=[...pericias(P).keys()];c.append(el("p",{class:"nota"},f.x),contador(P.especial.length,2,"escolhidas"),chips(tem,P.especial,2,n=>{P.especial=n;mudou()}))}});
   if(cl.maestria){const op=armasMaestria(P);c.append(el("h3",{},"Maestria em Armas"),el("p",{class:"nota"},"Escolha "+cl.maestria+" tipos de arma. Toque numa escolhida para ver o efeito."),contador(P.maestrias.length,cl.maestria,"escolhidas"),
     chips(op.map(a=>[a[0],a[1],a[7]]),P.maestrias,cl.maestria,n=>{P.maestrias=n;mudou()}),
@@ -338,10 +342,10 @@ function txtItens(P,lst){return lista(lst.map(it=>it[0]==="a"?(it[2]>1?it[2]+" "
 function rEq(c,P){const cl=CL(P),an=AN(P);
   c.append(el("h3",{},"Da classe ("+cl.n+")"));
   [["A","Opção A"],["A2","Opção B"],["B","Só ouro"]].forEach(([k,t])=>{if(!cl.equip[k])return;const o=cl.equip[k];
-    c.append(opcao("eqc:"+k,P.eqC===k,[el("b",{},k==="B"?(cl.equip.A2?"Opção C":"Opção B")+": "+o+" PO":t),el("span",{},k==="B"?"compre o seu":o.po+" PO"),el("em",{},k==="B"?"Você recebe só o ouro e compra o que quiser.":txtItens(P,o.itens))],()=>[],()=>{P.eqC=k;mudou()}))});
+    c.append(opcao("eqc:"+k,P.eqC===k,[el("b",{},k==="B"?(cl.equip.A2?"Opção C":"Opção B")+": "+o+" PO":t),el("span",{},k==="B"?"compre o seu":o.po+" PO"),el("em",{},k==="B"?"Você recebe só o ouro e compra o que quiser.":txtItens(P,o.itens))],()=>[],()=>{P.eqC=k;mudou()},()=>{P.eqC=null;mudou()}))});
   c.append(el("h3",{},"Do antecedente ("+an.n+")"),
-    opcao("eqa:A",P.eqA==="A",[el("b",{},"Opção A"),el("span",{},an.po+" PO"),el("em",{},txtItens(P,an.eq))],()=>[],()=>{P.eqA="A";mudou()}),
-    opcao("eqa:B",P.eqA==="B",[el("b",{},"Opção B: 50 PO"),el("span",{},"compre o seu"),el("em",{},"Você recebe só o ouro.")],()=>[],()=>{P.eqA="B";mudou()}));
+    opcao("eqa:A",P.eqA==="A",[el("b",{},"Opção A"),el("span",{},an.po+" PO"),el("em",{},txtItens(P,an.eq))],()=>[],()=>{P.eqA="A";mudou()},()=>{P.eqA=null;mudou()}),
+    opcao("eqa:B",P.eqA==="B",[el("b",{},"Opção B: 50 PO"),el("span",{},"compre o seu"),el("em",{},"Você recebe só o ouro.")],()=>[],()=>{P.eqA="B";mudou()},()=>{P.eqA=null;mudou()}));
   precisaEsc(P).forEach(e=>c.append(el("h3",{},e==="jogo"?"Escolha o jogo":"Escolha o instrumento"),chips(e==="jogo"?JOGOS:INSTRUMENTOS,P.eqEsc[e]?[P.eqEsc[e]]:[],1,n=>{P.eqEsc[e]=n[0]||null;mudou()})));
   if(P.eqC&&P.eqA){const r=itensEquip(P);c.append(el("h3",{},"Vai levar"),el("ul",{class:"res-l"},...r.itens.map(i=>el("li",{},(i.q>1?i.q+" × ":"")+(i.t==="a"?arma(i.k)[1]:i.t==="r"?armadura(i.k)[1]:i.n))),el("li",{},el("b",{},r.po+" PO"))),
     el("p",{class:"nota"},"Com ouro, combine com o mestre o que comprar; na ficha você pode anotar as compras."))}}
