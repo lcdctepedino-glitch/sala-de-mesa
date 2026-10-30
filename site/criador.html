@@ -1669,7 +1669,7 @@ function opcao(id,sel,cab,det,onSel){const ab=sel||abertos[id];const o=el("div",
 function linhaMagia(s,on,dis,toggle){const id="mg:"+s[0];const ab=abertos[id];
   return el("div",{class:"op"+(on?" on":"")},el("div",{class:"mg",style:"padding:8px 11px"},el("input",{type:"checkbox",checked:on,disabled:dis&&!on,"aria-label":"Escolher "+s[1],onchange:toggle}),
     el("button",{type:"button",class:"cab",style:"padding:0",onclick:()=>{abertos[id]=!ab;redesenhar()}},el("b",{},s[1]),el("span",{},(s[2]?"nv "+s[2]+" · ":"")+(s[9]?"C ":"")+(s[10]?"R ":"")+s[5]),el("em",{},s[6]+" · "+s[8]))),
-    ab?el("div",{class:"det"},el("p",{},s[11]),el("p",{class:"nota"},s[3]+" · componentes "+s[7]+(s[9]?" · Concentração":"")+(s[10]?" · pode ser Ritual":""))):null)}
+    ab?el("div",{class:"det"},rico(s[11]),el("p",{class:"nota"},s[3]+" · componentes "+s[7]+(s[9]?" · Concentração":"")+(s[10]?" · pode ser Ritual":""))):null)}
 function mostrar(t){tela=t;["inicio","criador","ficha","subir"].forEach(x=>{const e=$("#t-"+x);if(e)e.hidden=x!==t});window.scrollTo(0,0);
   if(t==="inicio")rInicio();if(t==="criador")rPasso();if(t==="ficha")rFicha();if(t==="subir")rSubir()}
 
