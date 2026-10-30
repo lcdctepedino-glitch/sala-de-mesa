@@ -127,7 +127,7 @@ async function telaInicio() {
   const [jog, mesas, fichas] = await Promise.all([
     sb.from("jogadores").select("nome").eq("id", EU.id).maybeSingle(),
     sb.from("mesas").select("id,nome,mestre_id").order("criado_em", { ascending: false }),
-    sb.from("fichas").select("id,nome,mesa_id,pid:dados->>id").eq("dono_id", EU.id).order("criado_em", { ascending: false })
+    sb.from("fichas").select("id,nome,mesa_id,pid:dados->>id,pagina:dados->>pagina").eq("dono_id", EU.id).order("criado_em", { ascending: false })
   ]);
   $("#ola").textContent = "Olá, " + ((jog.data && jog.data.nome) || EU.email) + ".";
   FICHAS = fichas.data || [];
@@ -144,7 +144,7 @@ async function telaInicio() {
 
   const lf = $("#l-fichas"); lf.textContent = "";
   if (!FICHAS.length) lf.append(smEl("p", { class: "vazio" }, "Nenhum personagem ainda. Crie o primeiro no criador."));
-  else FICHAS.forEach(f => lf.append(smEl("a", { class: "item", href: "criador.html?f=" + encodeURIComponent(f.pid || "") },
+  else FICHAS.forEach(f => lf.append(smEl("a", { class: "item", href: f.pagina ? f.pagina + "?f=" + f.id : "criador.html?f=" + encodeURIComponent(f.pid || "") },
     smEl("b", {}, f.nome || "Sem nome"), smEl("small", {}, f.mesa_id ? "Na mesa " + (nomeMesa[f.mesa_id] || "") : "Sem mesa"), smEl("span", { class: "seta", "aria-hidden": "true" }, "›"))));
 
   const sel = $("#in-ficha"); sel.textContent = "";

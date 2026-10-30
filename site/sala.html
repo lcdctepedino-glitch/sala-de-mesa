@@ -143,7 +143,7 @@ document.addEventListener("gesturestart", e => e.preventDefault());
 /* ---------- ficha (ideia 3: ficha e mapa na mesma tela) ---------- */
 $("#bt-troca").onclick = () => {
   const f = $("#ficha"), abrir = f.hidden;
-  if (abrir && !f.src) f.src = "criador.html?embed=1&f=" + encodeURIComponent(MINHA_FICHA);
+  if (abrir && !f.src) f.src = MINHA_FICHA;
   f.hidden = !abrir; $("#bt-troca").textContent = abrir ? "Mapa" : "Ficha";
   if (MESTRE) $("#gaveta").hidden = abrir;
 };
@@ -202,11 +202,13 @@ async function entrar() {
   const [mesa, eu, ficha] = await Promise.all([
     sb.from("mesas").select("id,nome,mestre_id,imagem_atual,imagem_titulo").eq("id", M).maybeSingle(),
     sb.from("jogadores").select("nome").eq("id", EU.id).maybeSingle(),
-    sb.from("fichas").select("pid:dados->>id").eq("mesa_id", M).eq("dono_id", EU.id).limit(1)
+    sb.from("fichas").select("id,pid:dados->>id,pagina:dados->>pagina").eq("mesa_id", M).eq("dono_id", EU.id).limit(1)
   ]);
   if (mesa.error || !mesa.data) { vazio(true, "Não achei essa mesa, ou você não está nela.", "Volte ao início e entre com o código."); return }
   MESA = mesa.data; MESTRE = MESA.mestre_id === EU.id; NOME = (eu.data && eu.data.nome) || "";
-  MINHA_FICHA = ficha.data && ficha.data[0] && ficha.data[0].pid;
+  const fx = ficha.data && ficha.data[0];
+  /* ficha do criador abre pelo id do personagem; ficha sob medida (Daibo) abre a página dela pela linha */
+  MINHA_FICHA = fx && (fx.pagina ? fx.pagina + "?embed=1&f=" + fx.id : fx.pid ? "criador.html?embed=1&f=" + encodeURIComponent(fx.pid) : null);
   document.title = MESA.nome + " · Sala de Mesa";
   $("#t-nome").textContent = MESA.nome; $("#bt-volta").href = "mesa.html?m=" + M;
   $("#bt-troca").hidden = !MINHA_FICHA;
