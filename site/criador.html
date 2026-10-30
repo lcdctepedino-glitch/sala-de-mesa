@@ -1360,9 +1360,7 @@ function abaFicha(c,P){const m=MOD(P),f=atrFinal(P),pb=2,cl=CL(P),per=pericias(P
     el("p",{},el("b",{},"Ouro: "),el("input",{type:"number",inputMode:"numeric",min:0,value:j.po!==undefined?j.po:eq.po,style:"width:110px","aria-label":"Peças de ouro",onchange:e=>{j.po=Math.max(0,Number(e.target.value)||0);gravar()}})," PO"),
     el("p",{class:"nota"},"Compras e itens novos: anote em Outras anotações, na aba Background."));
   c.append(secT("Nível"),el("p",{class:"nota"},"Nível 1. Subir de nível vem na próxima versão do criador."));
-  c.append(secT("Guardar a ficha"),el("p",{class:"nota"},"A ficha fica guardada neste aparelho. Para não perder, copie e mande para você mesmo ou para o mestre no WhatsApp. A imagem não vai junto no texto."),
-    el("div",{class:"linha"},el("button",{class:"bt",type:"button",onclick:e=>copiarFicha(P,e.currentTarget)},"Copiar ficha"),el("button",{class:"bt sec",type:"button",onclick:e=>confirmar(e.currentTarget,()=>{delete DB.lista[P.id];DB.atual=null;gravar(true);mostrar("inicio")})},"Apagar personagem")),
-    el("textarea",{id:"cod-manual",hidden:true,"aria-label":"Texto da ficha para copiar",style:"width:100%;margin-top:8px;min-height:90px;font-size:13px"}),el("p",{class:"nota",id:"st-copiar"}))}
+  c.append(secT("Apagar personagem"),el("p",{class:"nota"},"Apaga a ficha da sua conta, em todos os aparelhos. Não dá para desfazer."),el("div",{class:"linha"},el("button",{class:"bt sec",type:"button",onclick:e=>confirmar(e.currentTarget,()=>{delete DB.lista[P.id];DB.atual=null;gravar(true);mostrar("inicio")})},"Apagar personagem")))}
 function folhaCA(P){const ca=caCalc(P),j=P.jogo,disp=armadurasDisp(P).filter(k=>k!=="escudo"),tr=treinoArmadura(P);
   const corpo=[[null,"Sem armadura"],...disp.map(k=>[k,armadura(k)[1]+(tr.includes(armadura(k)[2])?"":" (sem treino)")])];
   folha("Classe de Armadura",String(ca.ca),[ca.txt+".",el("p",{class:"cont"},"Vestindo:"),chips(corpo.map(([k,t])=>[k===null?"__":k,t]),[ca.corpo===null?"__":ca.corpo],1,n=>{j.arm=n[0]==="__"||n[0]===undefined?null:n[0];salvarJogo();folhaCA(P)}),
@@ -1695,10 +1693,8 @@ function abaFicha(c,P){const m=MOD(P),f=atrFinal(P),pb=pbP(P),cl=CL(P),per=peric
   if(nv<NIVEL_MAX)box.append(el("button",{class:"bt",type:"button",onclick:abrirSubir},"Subir para o nível "+(nv+1)));
   if(nv>1)box.append(el("button",{class:"bt sec",type:"button",onclick:e=>confirmar(e.currentTarget,()=>desfazerNivel(P))},"Desfazer nível "+nv));
   c.append(secT("Nível",nv+" de "+NIVEL_MAX+" nesta versão"),el("p",{class:"nota"},nv<NIVEL_MAX?"Suba quando o mestre liberar. Um nível por vez; o último pode ser desfeito.":"Nível máximo desta versão do criador. Os próximos níveis vêm depois."),box,
-    (P.niveis||[]).length?el("p",{class:"nota"},"Vida por nível: "+P.niveis.map((n,i)=>"nível "+(i+2)+": "+CLASSES[n.c].n+", "+n.pv+(n.modo==="fixo"?" (fixo)":" (rolado)")+" + CON").join(" · ")):null);
-  c.append(secT("Guardar a ficha"),el("p",{class:"nota"},"A ficha fica guardada neste aparelho. Para não perder, copie e mande para você mesmo ou para o mestre no WhatsApp. A imagem não vai junto no texto."),
-    el("div",{class:"linha"},el("button",{class:"bt",type:"button",onclick:e=>copiarFicha(P,e.currentTarget)},"Copiar ficha"),el("button",{class:"bt sec",type:"button",onclick:e=>confirmar(e.currentTarget,()=>{delete DB.lista[P.id];DB.atual=null;gravar(true);mostrar("inicio")})},"Apagar personagem")),
-    el("textarea",{id:"cod-manual",hidden:true,"aria-label":"Texto da ficha para copiar",style:"width:100%;margin-top:8px;min-height:90px;font-size:13px"}),el("p",{class:"nota",id:"st-copiar"}))}
+    (P.niveis||[]).length?el("p",{class:"nota"},"Vida por nível: "+P.niveis.map((n,i)=>"nível "+(i+2)+": "+CLASSES[n.c].n+", "+n.pv+(n.modo==="fixo"?" (fixo)":" (rolado)")+" + CON").join(" · ")):"");
+  c.append(secT("Apagar personagem"),el("p",{class:"nota"},"Apaga a ficha da sua conta, em todos os aparelhos. Não dá para desfazer."),el("div",{class:"linha"},el("button",{class:"bt sec",type:"button",onclick:e=>confirmar(e.currentTarget,()=>{delete DB.lista[P.id];DB.atual=null;gravar(true);mostrar("inicio")})},"Apagar personagem")))}
 function abaCombate(c,P){const m=MOD(P),pb=pbP(P),j=P.jogo;
   c.append(secT("Ataques","toque para detalhes"),el("ul",{class:"lista"},...ataques(P).map(a=>itemLista(a.n,a.hit+" · "+a.dano,a.sub,()=>{
     if(a.k.startsWith("arma:")){const w=arma(a.k.slice(5));folha(w[1],(w[2]==="S"?"Arma Simples":"Arma Marcial")+(w[3]==="C"?" corpo a corpo":" à distância"),[el("dl",{class:"meta"},el("dt",{},"Ataque"),el("dd",{},a.hit),el("dt",{},"Dano"),el("dd",{},a.dano),
