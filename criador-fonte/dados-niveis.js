@@ -1,16 +1,16 @@
-/* Níveis 2 a 5 das classes, subclasses (níveis 3 e 5), talentos gerais (nível 4) e regras de multiclasse (Livro do Jogador 2024). Resumos com palavras próprias. */
-const NIVEL_MAX=5;
+/* Níveis 2 a 5 das classes (6 a 20 em dados-niveis-altos.js), subclasses (níveis 3 e 5), talentos gerais (nível 4) e regras de multiclasse (Livro do Jogador 2024). Resumos com palavras próprias. */
+const NIVEL_MAX=20;
 /* progressão de magia por nível da classe (índice 0 = nível 1) */
-const PROG={bardo:{truques:[2,2,2,3,3],prep:[4,5,6,7,9]},clerigo:{truques:[3,3,3,4,4],prep:[4,5,6,7,9]},druida:{truques:[2,2,2,3,3],prep:[4,5,6,7,9]},
-  feiticeiro:{truques:[4,4,4,5,5],prep:[2,4,6,7,9]},mago:{truques:[3,3,3,4,4],prep:[4,5,6,7,9]},bruxo:{truques:[2,2,2,3,3],prep:[2,3,4,5,6]},paladino:{truques:[0,0,0,0,0],prep:[2,3,4,5,6]},patrulheiro:{truques:[0,0,0,0,0],prep:[2,3,4,5,6]}};
+const PROG={bardo:{truques:[2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4],prep:[4,5,6,7,9,10,11,12,14,15,16,16,17,17,18,18,19,20,21,22]},clerigo:{truques:[3,3,3,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5],prep:[4,5,6,7,9,10,11,12,14,15,16,16,17,17,18,18,19,20,21,22]},druida:{truques:[2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4],prep:[4,5,6,7,9,10,11,12,14,15,16,16,17,17,18,18,19,20,21,22]},
+  feiticeiro:{truques:[4,4,4,5,5,5,5,5,5,6,6,6,6,6,6,6,6,6,6,6],prep:[2,4,6,7,9,10,11,12,14,15,16,16,17,17,18,18,19,20,21,22]},mago:{truques:[3,3,3,4,4,4,4,4,4,5,5,5,5,5,5,5,5,5,5,5],prep:[4,5,6,7,9,10,11,12,14,15,16,16,17,18,19,21,22,23,24,25]},bruxo:{truques:[2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4],prep:[2,3,4,5,6,7,8,9,10,10,11,11,12,12,13,13,14,14,15,15]},paladino:{truques:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],prep:[2,3,4,5,6,6,7,7,9,9,10,10,11,11,12,12,14,14,15,15]},patrulheiro:{truques:[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],prep:[2,3,4,5,6,6,7,7,9,9,10,10,11,11,12,12,14,14,15,15]}};
 const CHEIO=["bardo","clerigo","druida","feiticeiro","mago"],MEIO=["paladino","patrulheiro"];
-const TAB_ESPACOS=[[],[2],[3],[4,2],[4,3],[4,3,2]]; /* por nível de conjurador (multiclasse e conjuradores completos) */
-const ESP_MEIO=[[],[2],[2],[3],[3],[4,2]]; /* paladino/patrulheiro sozinhos */
-const PACTO=[null,[1,1],[2,1],[2,2],[2,2],[2,3]]; /* bruxo: [espaços, nível do espaço] */
-const INVOC_N=[0,1,3,3,3,5];
-const FURIAS=[0,2,2,3,3,3];
-const PREP_TERCO=[0,0,0,3,4,4],ESP_TERCO=[[],[],[],[2],[3],[3]]; /* Cavaleiro Arcano e Trapaceiro Arcano sozinhos */
-const MAESTRIA_N={barbaro:[2,2,2,3,3],guerreiro:[3,3,3,4,4]}; /* quantas armas com maestria por nível da classe */
+const TAB_ESPACOS=[[],[2],[3],[4,2],[4,3],[4,3,2],[4,3,3],[4,3,3,1],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2,1],[4,3,3,3,2,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1],[4,3,3,3,2,1,1,1,1],[4,3,3,3,3,1,1,1,1],[4,3,3,3,3,2,1,1,1],[4,3,3,3,3,2,2,1,1]]; /* por nível de conjurador (multiclasse e conjuradores completos) */
+const ESP_MEIO=[[],[2],[2],[3],[3],[4,2],[4,2],[4,3],[4,3],[4,3,2],[4,3,2],[4,3,3],[4,3,3],[4,3,3,1],[4,3,3,1],[4,3,3,2],[4,3,3,2],[4,3,3,3,1],[4,3,3,3,1],[4,3,3,3,2],[4,3,3,3,2]]; /* paladino/patrulheiro sozinhos */
+const PACTO=[null,[1,1],[2,1],[2,2],[2,2],[2,3],[2,3],[2,4],[2,4],[2,5],[2,5],[3,5],[3,5],[3,5],[3,5],[3,5],[3,5],[4,5],[4,5],[4,5],[4,5]]; /* bruxo: [espaços, nível do espaço] */
+const INVOC_N=[0,1,3,3,3,5,5,6,6,7,7,7,8,8,8,9,9,9,10,10,10];
+const FURIAS=[0,2,2,3,3,3,4,4,4,4,4,4,5,5,5,5,5,6,6,6,6];
+const PREP_TERCO=[0,0,0,3,4,4,4,5,6,6,7,8,8,9,10,10,11,11,11,12,13],ESP_TERCO=[[],[],[],[2],[3],[3],[3],[4,2],[4,2],[4,2],[4,3],[4,3],[4,3],[4,3,2],[4,3,2],[4,3,2],[4,3,3],[4,3,3],[4,3,3],[4,3,3,1],[4,3,3,1]]; /* Cavaleiro Arcano e Trapaceiro Arcano sozinhos */
+const MAESTRIA_N={barbaro:[2,2,2,3,3,3,3,3,3,4,4,4,4,4,4,4,4,4,4,4],guerreiro:[3,3,3,4,4,4,4,4,4,5,5,5,5,5,5,6,6,6,6,6]}; /* quantas armas com maestria por nível da classe */
 const TXT_ASI="Você melhora um atributo ou aprende um talento.\n- **Aumento no Valor de Atributo:** +2 num atributo, ou +1 em dois. Nenhum passa de 20.\n- **Ou um talento:** um talento Geral (pede nível 4), um talento de Origem ou, se a classe tiver Estilo de Luta, um talento de Estilo de Luta. Precisa cumprir o pré-requisito.";
 const TXT_EXTRA="Você ataca duas vezes.\n- **Efeito:** quando usa a ação de Ataque no seu turno, faz dois ataques em vez de um.\n- **Várias classes:** Ataque Extra de classes diferentes não soma.";
 /* multiclasse: atributo mínimo 13 e o que se ganha */

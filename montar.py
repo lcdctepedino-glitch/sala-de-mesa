@@ -17,7 +17,7 @@ corpo = troca(corpo, "Recebeu uma ficha no WhatsApp ou perdeu a sua? Copie a men
               "Tem uma ficha antiga em texto, do WhatsApp? Copie a mensagem inteira e cole aqui: ela passa a ficar na sua conta.")
 
 niveis = troca(ler("app-niveis.js"), "\niniciar();\n", "\n")  # quem inicia agora é o nuvem.js, depois de buscar as fichas
-js = "\n".join([ler(f) for f in ["dados-base.js", "dados-classes.js", "dados-origem.js", "dados-magias.js", "dados-niveis.js", "dados-bestas.js", "app.js"]] + [niveis, ler("nuvem.js")])
+js = "\n".join([ler(f) for f in ["dados-base.js", "dados-classes.js", "dados-origem.js", "dados-magias.js", "dados-niveis.js", "dados-niveis-altos.js", "dados-bestas.js", "dados-bestas-altas.js", "app.js"]] + [niveis, ler("nuvem.js")])
 # na conta a ficha já fica salva sozinha: sai "Guardar a ficha" (copiar o texto para o WhatsApp), fica só o Apagar
 GUARDAR = re.compile(r'secT\("Guardar a ficha"\),el\("p",\{class:"nota"\},"A ficha fica guardada neste aparelho\.[^"]*"\),\s*el\("div",\{class:"linha"\},el\("button",\{class:"bt",type:"button",onclick:e=>copiarFicha\(P,e\.currentTarget\)\},"Copiar ficha"\),(el\("button",\{class:"bt sec".*?"Apagar personagem"\))\),\s*el\("textarea",\{id:"cod-manual".*?\),el\("p",\{class:"nota",id:"st-copiar"\}\)', re.S)
 APAGAR = lambda x: 'secT("Apagar personagem"),el("p",{class:"nota"},"Apaga a ficha da sua conta, em todos os aparelhos. Não dá para desfazer."),el("div",{class:"linha"},' + x.group(1) + ')'
