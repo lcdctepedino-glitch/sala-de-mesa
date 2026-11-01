@@ -192,3 +192,31 @@ button.attr{width:100%;font:inherit;color:inherit;cursor:pointer}
 .ex-desf{border:1px dashed var(--x-line);background:transparent;color:inherit;border-radius:18px;padding:6px 12px;font-size:14px}
 .ex-desf.conf{background:var(--x-acc);color:var(--x-on);border-color:var(--x-acc);border-style:solid}
 body{--x-line:var(--line);--x-acc:var(--acc);--x-on:var(--paper);--x-bg:var(--paper)}
+
+/* Ficha no arranjo da ficha do Daibo (01/11/2026): caixas do turno, truques × magias que gastam espaço */
+.broche-box{color:var(--ink);display:flex;justify-content:center;margin-bottom:4px}
+.broche{width:62px;height:62px}
+.bt.largo{display:block;width:100%;margin:10px 0 4px;padding:11px 16px;background:transparent;color:var(--ink);border:2px solid var(--ink);border-radius:26px;font-family:var(--f-disp);font-size:20px}
+.stats.s4{grid-template-columns:repeat(4,1fr)}
+.turno-leg{margin-top:0}
+.cx-mag{margin:10px 0 0;border:1px solid var(--line);border-radius:10px;padding:8px 12px 2px;background:var(--card)}
+.cx-tit{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.cx-tit b{font-family:var(--f-disp);font-weight:400;font-size:21px}
+.cx-sel{font-size:13px;border-radius:10px;padding:0 9px;white-space:nowrap;color:var(--mute);border:1px solid var(--line)}
+.cx-exp{margin:2px 0 4px;font-size:14px;font-style:italic;color:var(--mute)}
+.cx-mag .cx-exp:last-child{margin-bottom:8px}
+.cx-mag .lista li:last-child button{border-bottom:0}
+.cx-mag .rec{margin:4px 0 6px}
+.cx-nv{margin:8px 0 0;font-size:13px;font-style:italic;color:var(--mute);border-bottom:1px solid var(--line)}
+.cx-mag.acao{border-left:4px solid var(--acc)}
+.cx-mag.bonus{border-left:4px solid #2f5d8a}
+.cx-mag.bonus .cx-tit b{color:#2f5d8a}
+.cx-mag.reacao{border-left:4px solid #6b4a8c}
+.cx-mag.reacao .cx-tit b{color:#6b4a8c}
+.cx-mag.semacao{border-left:4px dashed var(--mute)}
+.cx-mag.livre{border-left:4px solid var(--ok)}
+.cx-sel.livre{color:var(--ok);border-color:var(--ok)}
+.cx-mag.gasta{border-left:4px solid var(--acc)}
+.cx-sel.gasta{color:var(--acc);border-color:var(--acc)}
+.cx-mag.guarda{border-left:4px dotted var(--line);background:transparent}
+.tag.livre{border-color:var(--ok);color:var(--ok)}
