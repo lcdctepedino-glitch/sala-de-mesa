@@ -2787,17 +2787,26 @@ function opcoesAsi(P,P2){const out=[],ja=asisDe(P).map(a=>a.k);
   return out}
 function atrsTalento(P,t){const op=t.atr==="todas"?ATR:t.atr==="semResist"?ATR.filter(x=>!salvProf(P,x)):(t.atr||[]);return op}
 function escolhaAsi(P,P2,e,add){e.asi=e.asi||{};const a=e.asi,nvN=NV(P)+1,f=atrFinal(P),slot="nv"+nvN;
-  const escolher=k=>{e.asi={k};SUBIR.verAsi=false;P.tal=P.tal||{};if(k.startsWith("o:"))P.tal[slot]={k:k.slice(2)};else delete P.tal[slot];
+  const escolher=k=>{e.asi={k};abertos["asi:"+k]=true;P.tal=P.tal||{};if(k.startsWith("o:"))P.tal[slot]={k:k.slice(2)};else delete P.tal[slot];
     if(k==="aumento")e.asi.modo="2";const t=TALENTOS_GERAIS[k];if(t){const op=atrsTalento(P,t).filter(x=>f[x]<(t.epico?30:20));if(op.length===1)e.asi.a1=op[0]}mudou()};
+  const tirar=()=>{e.asi={};if(P.tal)delete P.tal[slot];mudou()};
   add("Aumento de Atributo ou Talento",b=>{
-    const ops=opcoesAsi(P,P2);const so=a.k&&!SUBIR.verAsi;
-    if(!so)b.append(el("p",{class:"nota"},"Escolha um. Os apagados pedem algo que você ainda não tem."));
-    let ult=null;ops.forEach(o=>{if(so&&o.k!==a.k)return;
-      if(!so&&o.k!=="aumento"&&o.tipo!==ult){b.append(el("p",{class:"cont"},o.tipo));ult=o.tipo}
-      const op=opcao("asi:"+o.k,a.k===o.k,[el("b",{},o.n),el("span",{},""),el("em",{},o.falta?"Não dá: "+o.falta+".":linha1(o.x))],()=>[rico(o.x)],o.falta?null:()=>escolher(o.k),()=>{e.asi={};SUBIR.verAsi=false;if(P.tal)delete P.tal[slot];mudou()});
-      if(o.falta)op.style.opacity=".55";b.append(op)});
-    if(so)b.append(el("button",{type:"button",class:"lnk",style:"align-self:flex-start",onclick:()=>{SUBIR.verAsi=true;mudou()}},"trocar a escolha"));
-    if(!a.k)return;
+    // tocar no nome só abre e fecha a explicação; escolher é o botão de dentro, e a lista nunca some
+    const ops=opcoesAsi(P,P2);let dEsc=null;
+    const esc=ops.find(o=>o.k===a.k);
+    b.append(el("p",{class:"nota"},esc?"Escolhido: "+esc.n+". Toque num nome para ler; para mudar, abra outro e toque em Escolher.":"Toque num nome para ler a explicação, e em Escolher para ficar com ele. Os apagados pedem algo que você ainda não tem."));
+    let ult=null;ops.forEach(o=>{
+      if(o.k!=="aumento"&&o.tipo!==ult){b.append(el("p",{class:"cont"},o.tipo));ult=o.tipo}
+      const id="asi:"+o.k,on=a.k===o.k,ab=!!abertos[id];
+      const op=el("div",{class:"op"+(on?" on":"")},el("button",{class:"cab",type:"button","aria-expanded":String(ab),onclick:()=>{abertos[id]=!ab;redesenhar()}},
+        [el("b",{},o.n),el("span",{},on?"✓ escolhido":""),el("em",{},o.falta?"Não dá: "+o.falta+".":linha1(o.x))]));
+      if(ab){const d=el("div",{class:"det"},rico(o.x));op.append(d);
+        if(o.falta)d.append(el("p",{class:"nota"},"Não dá: "+o.falta+"."));
+        else if(!on)d.append(el("button",{type:"button",class:"bt mini",style:"align-self:flex-start;margin-top:8px",onclick:()=>escolher(o.k)},"Escolher "+o.n));
+        else{dEsc=d;op.append(el("div",{class:"det"},el("button",{type:"button",class:"lnk",style:"align-self:flex-start",onclick:tirar},"Tirar a escolha")))}}
+      if(o.falta&&!ab)op.style.opacity=".55";b.append(op)});
+    // as escolhas do talento (atributo, elemento, magia...) aparecem dentro dele, aberto
+    if(!a.k||!dEsc)return;b=dEsc;
     if(a.k==="aumento"){
       b.append(el("div",{class:"seg"},el("button",{type:"button",class:a.modo==="2"?"on":"",onclick:()=>{a.modo="2";a.a2=null;mudou()}},"+2 num atributo"),el("button",{type:"button",class:a.modo==="11"?"on":"",onclick:()=>{a.modo="11";mudou()}},"+1 em dois")));
       const sel=[a.a1,a.a2].filter(Boolean),mx=a.modo==="2"?1:2,soma=a.modo==="2"?2:1;
