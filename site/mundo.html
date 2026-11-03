@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<link rel="icon" href="data:,">
+<title>Mundo · Sala de Mesa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,600;1,400&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="js/base.css">
+<style>
+/* Tela 3, "Mesa do mestre": mapa grande; cartões à direita (selecionado, na cena); escada de mapas embaixo */
+:root{--perg:#e6d8b5;--tinta:#3a2e20;--oculto:#d48a6a;--conhecido:#d9c27a;--visitado:#9fc49a;--segredo:#2a1d1a;--segborda:#6b3b2f}
+html,body{height:100%;overflow:hidden;overscroll-behavior:none}
+button{font:inherit;color:inherit;cursor:pointer}
+#app{position:fixed;inset:0;padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px)}
+.o3{height:100%;display:grid;grid-template-columns:minmax(0,1fr) 360px;grid-template-rows:auto minmax(0,1fr) 128px}
+.o3 .cab{grid-column:1/-1;display:flex;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.o3 .cab .esp{flex:1}
+.o3 .volta{font-size:22px;line-height:1;padding:2px 6px;text-decoration:none;color:var(--ink)}
+.o3 .mapa{position:relative;min-height:0}
+.o3 .cartas{grid-row:2/4;grid-column:2;border-left:1px solid var(--line);padding:14px;display:grid;align-content:start;gap:12px;overflow:auto;min-height:0}
+.o3 .carta{background:var(--card);border-radius:14px;padding:14px;display:grid;gap:10px;min-width:0}
+.o3 .carta>h4{margin:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.o3 .carta .pg h3{font-size:22px}
+.o3 .cena{display:grid;gap:6px}
+.o3 .cena a{display:flex;justify-content:space-between;gap:8px;padding:7px 10px;border:1px solid var(--borda);border-radius:10px;text-decoration:none;color:var(--ink);font-size:14px}
+.o3 .cena small{color:var(--mute)}
+.o3 .escada{grid-column:1;border-top:1px solid var(--line);display:flex;gap:10px;align-items:center;padding:10px 14px;overflow-x:auto}
+.o3 .degrau{flex:none;display:grid;gap:4px;background:none;border:2px solid transparent;border-radius:12px;padding:4px;text-align:left;position:relative}
+.o3 .degrau img{width:150px;height:80px;object-fit:cover;border-radius:8px;display:block;background:var(--campo)}
+.o3 .degrau span{font-size:13px;font-weight:700;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.o3 .degrau[aria-current="true"]{border-color:var(--ink)}
+.o3 .degrau .na-tela{position:absolute;left:10px;top:10px;font:700 10px var(--f-ui);background:var(--ink);color:var(--bg);border-radius:6px;padding:1px 5px}
+.o3 .degrau.filho{opacity:.8}
+.o3 .seta{color:var(--borda);font-size:20px}
+@media (max-width:900px){
+  .o3{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr) 120px minmax(0,.9fr)}
+  .o3 .cartas{grid-row:4;grid-column:1;border-left:0;border-top:1px solid var(--line)}
+  .o3 .escada{grid-row:3}
+  .o3 .cab .busca{order:3;width:100%}
+}
+/* visor do mapa */
+.vp{position:absolute;inset:0;overflow:hidden;background:var(--campo);touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.vp.arrasta{cursor:grabbing}
+.vp.marcando{cursor:crosshair}
+.cam{position:absolute;left:0;top:0;transform-origin:0 0}
+.cam img{display:block;width:100%;height:100%;user-select:none;-webkit-user-drag:none;pointer-events:none}
+.pin{position:absolute;transform:translate(-50%,-50%) scale(var(--iz,1));transform-origin:center;background:none;border:0;padding:0;display:grid;justify-items:center;gap:3px;z-index:2;touch-action:none}
+.pin i{width:18px;height:18px;border-radius:50%;background:var(--tinta);border:3px solid var(--perg);box-shadow:0 0 0 3px var(--vis,transparent),0 2px 6px rgba(0,0,0,.45)}
+.pin.g-masmorras i{border-radius:4px;transform:rotate(45deg)}
+.pin.g-regioes i{background:transparent;border-style:dashed;width:26px;height:26px}
+.pin.g-salas i{border-radius:6px;width:24px;height:24px;background:var(--perg);border:2px solid var(--tinta);color:var(--tinta);font:700 13px/20px var(--f-ui);font-style:normal;text-align:center}
+.pin span{font:600 15px/1.1 var(--f-disp);color:var(--tinta);background:rgba(240,230,205,.86);padding:2px 7px;border-radius:6px;white-space:nowrap}
+.pin.ativo span{background:var(--tinta);color:var(--perg)}
+.pin.rascunho{opacity:.75}
+.pin.v-oculto{--vis:var(--oculto)} .pin.v-conhecido{--vis:var(--conhecido)} .pin.v-visitado{--vis:var(--visitado)}
+.jog .pin{--vis:transparent}
+.zm{position:absolute;right:12px;bottom:12px;display:grid;gap:6px;z-index:3}
+.zm button{width:38px;height:38px;border-radius:10px;border:1px solid var(--borda);background:rgba(22,23,27,.9);font-size:20px;line-height:1}
+.sobre{position:absolute;z-index:4;left:12px;top:12px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;max-width:calc(100% - 24px)}
+.faixa{background:var(--ink);color:var(--bg);font-weight:700;font-size:14px;border-radius:12px;padding:7px 8px 7px 12px;display:flex;gap:10px;align-items:center}
+.faixa button{background:var(--bg);color:var(--ink);border:0;border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700}
+.legenda{position:absolute;left:12px;bottom:12px;z-index:4;background:rgba(11,11,13,.82);border-radius:12px;padding:7px 12px;font-size:13px;display:flex;gap:12px;flex-wrap:wrap}
+.legenda span{display:inline-flex;gap:6px;align-items:center}
+.legenda i{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.sem-mapa{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:24px;color:var(--mute)}
+.sem-mapa>div{display:grid;gap:12px;justify-items:center;max-width:360px}
+.sem-mapa b{font:600 20px/1.3 var(--f-disp);color:var(--ink)}
+/* botões e chaves desta tela (o .bt do base.css é o botão grande, de largura toda) */
+.mbt{border:1px solid var(--borda);background:var(--card);border-radius:10px;padding:8px 12px;font-weight:700;font-size:14px;color:var(--ink)}
+.mbt.forte{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.mbt.conf{background:#5a2a22;border-color:#5a2a22;color:var(--ink)}
+.mbt:disabled{opacity:.45;cursor:default}
+.chave{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--borda);border-radius:20px;padding:6px 12px 6px 6px;background:rgba(22,23,27,.92);font-weight:700;font-size:14px;color:var(--ink)}
+.chave i{width:34px;height:20px;border-radius:10px;background:var(--campo);border:1px solid var(--borda);position:relative}
+.chave i::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--mute);transition:left .15s}
+.chave[aria-pressed="true"] i{background:var(--visitado);border-color:var(--visitado)}
+.chave[aria-pressed="true"] i::after{left:16px;background:var(--bg)}
+.trilha{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:14px;min-width:0}
+.trilha button{background:none;border:0;padding:2px 0;color:var(--mute);text-decoration:underline;text-underline-offset:3px}
+.trilha b{font-weight:700}
+.trilha em{color:var(--borda);font-style:normal}
+/* página da enciclopédia */
+.pg{display:grid;gap:12px;min-width:0}
+.pg-cab{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.pg-cab .esp{flex:1}
+.tipo{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--mute)}
+.est{border:1px solid var(--vis);color:var(--vis);background:none;border-radius:12px;padding:2px 10px;font-size:12px;font-weight:700}
+.est-oculto{--vis:var(--oculto)}.est-conhecido{--vis:var(--conhecido)}.est-visitado{--vis:var(--visitado)}
+.pg h3{font:600 26px/1.15 var(--f-disp);margin:0;text-wrap:balance;overflow-wrap:anywhere}
+.pg .txt{display:grid;gap:8px;max-width:62ch;overflow-wrap:anywhere}
+.lk{color:var(--ink);text-decoration:underline;text-decoration-color:var(--conhecido);text-underline-offset:3px}
+.lk.falta{text-decoration-style:dashed;text-decoration-color:var(--mute);color:var(--mute)}
+.segredo{background:var(--segredo);border:1px solid var(--segborda);border-radius:12px;padding:10px 12px;display:grid;gap:4px}
+.segredo b{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--oculto)}
+.cit{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:14px}
+.cit b{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);margin-right:4px}
+.cit a{border:1px solid var(--borda);border-radius:14px;padding:2px 10px;text-decoration:none;color:var(--ink)}
+.vazio{color:var(--mute)}
+/* edição da página (só o mestre) */
+.ed{display:grid;gap:12px}
+.ed .cp{display:grid;gap:5px}
+.ed .cp>span{font-size:13px;color:var(--mute)}
+.ed .cp small{font-size:12px;color:var(--mute)}
+.ed input[type=text],.ed textarea{width:100%;font:15px/1.45 var(--f-ui);color:var(--ink);background:var(--campo);border:1px solid var(--borda);border-radius:10px;padding:8px 10px}
+.ed textarea{resize:vertical;min-height:84px}
+.ed .seg-ed textarea{background:var(--segredo);border-color:var(--segborda)}
+.ed .seg-ed>span{color:var(--oculto)}
+.ed .tres{display:flex;gap:6px;flex-wrap:wrap}
+.ed .tres label{display:inline-flex}
+.ed .tres input{position:absolute;opacity:0;pointer-events:none}
+.ed .tres span{border:1px solid var(--vis);color:var(--vis);border-radius:12px;padding:4px 10px;font-size:13px;font-weight:700;cursor:pointer}
+.ed .tres input:checked+span{background:var(--vis);color:var(--bg)}
+.ed .tres input:focus-visible+span{outline:2px solid var(--ink);outline-offset:2px}
+.ed .ck{display:flex;gap:8px;align-items:center;font-size:14px}
+.ed .ck input{width:18px;height:18px}
+.ed .linha{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:14px}
+.ed .acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.ed .acoes .esp{flex:1}
+/* busca e aviso */
+.busca{position:relative;width:240px}
+.busca input{width:100%;font:15px var(--f-ui);color:var(--ink);background:var(--campo);border:1px solid var(--borda);border-radius:10px;padding:8px 11px}
+.res{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--card);border:1px solid var(--borda);border-radius:10px;display:grid;z-index:7;overflow:hidden}
+.res a{padding:8px 11px;text-decoration:none;color:var(--ink);display:flex;justify-content:space-between;gap:10px}
+.res a small{color:var(--mute)}
+.aviso{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);font-weight:700;padding:9px 16px;border-radius:12px;z-index:9;max-width:calc(100% - 32px);text-align:center}
+.aviso.erro{background:var(--erro)}
+.carregando{position:absolute;inset:0;display:grid;place-items:center;color:var(--mute);text-align:center;padding:24px}
+.carregando b{display:block;font:600 20px/1.3 var(--f-disp);color:var(--ink);margin-bottom:6px}
+</style>
+</head>
+<body>
+<div id="app"><div class="carregando"><div><b>Abrindo o mundo…</b></div></div></div>
+<input type="file" id="arq" accept="image/*" hidden>
+<datalist id="tipos"><option>Cidade</option><option>Vila</option><option>Lugar</option><option>Região</option><option>Masmorra</option><option>Ruína</option><option>Sala</option><option>PNJ</option><option>Facção</option><option>Item</option><option>Sessão</option><option>Monstro</option></datalist>
+
+<script src="js/supabase.js"></script>
+<script src="js/comum.js"></script>
+<script src="js/mundo-dados.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const EST = { oculto: "Oculto", conhecido: "Conhecido de nome", visitado: "Visitado" }, CICLO = { oculto: "conhecido", conhecido: "visitado", visitado: "oculto" };
+const COR = { oculto: "var(--oculto)", conhecido: "var(--conhecido)", visitado: "var(--visitado)" };
+let D = null;   // { mesa, mestre, mapas, paginas, seg }
+/* jog: "Ver como jogador"; buf: a página em edição (rascunho até Salvar); marcar: esperando um toque no mapa */
+const S = { jog: false, mapa: null, pag: null, edit: false, buf: null, marcar: false, vw: {} };
+const IMG = {};
+
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const chave = n => String(n || "").trim().toLowerCase();
+const pg = id => D.paginas.find(p => p.id === id);
+const mp = id => D.mapas.find(m => m.id === id);
+const porNome = n => D.paginas.find(p => chave(p.nome) === chave(n));
+const vivo = p => !!p && (!S.jog || p.estado !== "oculto");
+const curto = p => S.jog && p.estado === "conhecido";
+const mestreAgora = () => D.mestre && !S.jog;
+const nomeMapa = m => (m.lugar_id && pg(m.lugar_id)) ? pg(m.lugar_id).nome : m.nome;
+const mapaVivo = m => !!m && (!S.jog || !m.lugar_id || (pg(m.lugar_id) || {}).estado === "visitado");
+const raiz = () => D.mapas.find(m => !m.lugar_id);
+const mapaDe = p => D.mapas.find(m => m.lugar_id === p.id);
+const GRUPO = t => /masmorra|ruína|ruina|caverna|torre|cripta/i.test(t) ? "masmorras" : /região|regiao|reino|bosque|floresta|deserto|mar/i.test(t) ? "regioes" : /^sala/i.test(t) ? "salas" : "cidades";
+
+/* mapa de cima: o mapa em que está o lugar que abre este */
+function pai(m) { const l = m.lugar_id && pg(m.lugar_id); return l && l.mapa_id ? mp(l.mapa_id) : null }
+function trilhaDe(m) {
+  const t = [], vistos = new Set();
+  for (let x = m; x && !vistos.has(x.id); x = pai(x)) { vistos.add(x.id); t.unshift(x) }
+  const r = raiz(); if (r && t[0] !== r && mapaVivo(r)) t.unshift(r);
+  return t.filter(mapaVivo);
+}
+const filhos = m => D.mapas.filter(x => x.lugar_id && (pg(x.lugar_id) || {}).mapa_id === m.id && mapaVivo(x));
+
+/* ---------- texto com [[ligações]] ---------- */
+function texto(s) {
+  return String(s || "").split(/\n\s*\n/).filter(b => b.trim()).map(b => "<p>" + b.split(/(\[\[[^\]]+\]\])/).map(peca => {
+    const m = peca.match(/^\[\[([^\]]+)\]\]$/);
+    if (!m) return esc(peca).replace(/\n/g, "<br>");
+    const n = m[1], p = n !== "?" && porNome(n);
+    if (p && vivo(p)) return `<a href="#" class="lk" data-p="${p.id}">${esc(p.nome)}</a>`;
+    if (!p && n !== "?" && mestreAgora()) return `<a href="#" class="lk falta" data-novo="${esc(n)}" title="Esta página ainda não existe. Toque para criar.">${esc(n)}</a>`;
+    return "um lugar desconhecido";
+  }).join("") + "</p>").join("");
+}
+const cita = (t, n) => [...String(t || "").matchAll(/\[\[([^\]]+)\]\]/g)].some(m => chave(m[1]) === chave(n));
+const citados = p => D.paginas.filter(k => k !== p && vivo(k) && (cita(k.texto, p.nome) || (mestreAgora() && cita(D.seg[k.id], p.nome))));
+
+function pagina(p) {
+  if (!vivo(p)) return `<p class="vazio">Os jogadores ainda não conhecem esta página.</p>`;
+  const c = curto(p), cit = citados(p), sub = mapaDe(p), seg = D.seg[p.id];
+  return `<div class="pg"><div class="pg-cab"><span class="tipo">${esc(p.tipo)}</span>${mestreAgora() ? `<button type="button" class="est est-${p.estado}" data-ciclo="${p.id}" title="Toque para mudar o que os jogadores sabem">${EST[p.estado]}</button><span class="esp"></span><button type="button" class="mbt" data-editar>Editar</button>` : ""}</div>
+   <h3>${esc(p.nome)}</h3>
+   <div class="txt">${c ? "<p>Os jogadores só ouviram falar deste lugar.</p>" : texto(p.texto) || `<p class="vazio">${mestreAgora() ? "Ainda sem texto. Toque em Editar para escrever." : "Ainda sem descrição."}</p>`}</div>
+   ${sub && !c && mapaVivo(sub) ? `<div><button type="button" class="mbt forte" data-abre="${sub.id}">Abrir o mapa: ${esc(nomeMapa(sub))}</button></div>` : ""}
+   ${mestreAgora() && seg && seg.trim() ? `<div class="segredo"><b>Só o mestre vê</b><div class="txt">${texto(seg)}</div></div>` : ""}
+   ${cit.length ? `<div class="cit"><b>Citado em</b>${cit.map(k => `<a href="#" data-p="${k.id}">${esc(k.nome)}</a>`).join("")}</div>` : ""}</div>`;
+}
+
+function edicao() {
+  const b = S.buf, m = b.mapa_id && mp(b.mapa_id), sub = b.id && mapaDe(b);
+  const tres = Object.keys(EST).map(k => `<label class="est-${k}"><input type="radio" name="estado" value="${k}" ${b.estado === k ? "checked" : ""}><span>${EST[k]}</span></label>`).join("");
+  return `<form class="ed" data-form>
+   <label class="cp"><span>Nome</span><input type="text" id="ed-nome" name="nome" value="${esc(b.nome)}" placeholder="Ex.: Porto Cinzento" autocomplete="off"></label>
+   <label class="cp"><span>Tipo</span><input type="text" id="ed-tipo" name="tipo" value="${esc(b.tipo)}" list="tipos" autocomplete="off"></label>
+   <div class="cp"><span>O que os jogadores sabem</span><div class="tres">${tres}</div></div>
+   <label class="cp"><span>O que os jogadores leem</span><textarea id="ed-texto" name="texto" rows="5">${esc(b.texto)}</textarea><small>Escreva [[Nome de outra página]] para ligar as páginas.</small></label>
+   <label class="cp seg-ed"><span>Só o mestre vê</span><textarea id="ed-segredo" name="segredo" rows="4">${esc(b.segredo)}</textarea></label>
+   <label class="ck"><input type="checkbox" id="ed-cena" name="na_cena" ${b.na_cena ? "checked" : ""}> Na cena agora</label>
+   <div class="cp"><span>No mapa</span><div class="linha">${m ? `<span>Em ${esc(nomeMapa(m))}</span><button type="button" class="mbt" data-marcar-pag>Mudar de lugar</button><button type="button" class="mbt" data-tirar>Tirar do mapa</button>` : `<span class="vazio">Fora do mapa.</span>${S.mapa ? `<button type="button" class="mbt" data-marcar-pag>Marcar no mapa</button>` : ""}`}</div></div>
+   ${b.id ? `<div class="cp"><span>Mapa deste lugar</span><div class="linha">${sub ? `<span>${esc(nomeMapa(sub))}</span><button type="button" class="mbt" data-apaga-mapa="${sub.id}">Apagar o mapa</button>` : `<button type="button" class="mbt" data-envia-mapa>Enviar mapa deste lugar</button>`}</div></div>` : ""}
+   <div class="acoes"><button type="submit" class="mbt forte">Salvar</button><button type="button" class="mbt" data-cancelar>Cancelar</button><span class="esp"></span>${b.id ? `<button type="button" class="mbt" data-apagar>Apagar página</button>` : ""}</div>
+  </form>`;
+}
+
+/* ---------- a tela ---------- */
+function chaveJog() { return D.mestre ? `<button type="button" class="chave" data-jog aria-pressed="${S.jog}"><i></i>Ver como jogador</button>` : "" }
+function trilhaHtml(m) {
+  if (!m) return `<nav class="trilha"><b>${esc(D.mesa.nome)}</b></nav>`;
+  const t = trilhaDe(m);
+  return `<nav class="trilha" aria-label="Escada de mapas">${t.map((k, i) => i === t.length - 1 ? `<b>${esc(nomeMapa(k))}</b>` : `<button type="button" data-mapa="${k.id}">${esc(nomeMapa(k))}</button><em>›</em>`).join("")}</nav>`;
+}
+function legenda() { return mestreAgora() ? `<div class="legenda">${Object.keys(EST).map(k => `<span style="--c:${COR[k]}"><i></i>${EST[k]}</span>`).join("")}</div>` : "" }
+function degrau(k, filho) {
+  return `<button type="button" class="degrau${filho ? " filho" : ""}" data-mapa="${k.id}" aria-current="${S.mapa === k.id}"><img data-img="${esc(k.imagem)}" alt="">${mestreAgora() && D.mesa.imagem_atual === k.imagem ? `<b class="na-tela">na tela da sala</b>` : ""}<span>${esc(nomeMapa(k))}</span></button>`;
+}
+
+function render() {
+  const m = mp(S.mapa);
+  if (m && !mapaVivo(m)) S.mapa = null;
+  if (!mp(S.mapa)) { const r = raiz(); S.mapa = r && mapaVivo(r) ? r.id : null }
+  const atual = mp(S.mapa);
+  const sel = S.edit ? null : S.pag && pg(S.pag);
+  if (sel && !vivo(sel)) S.pag = null;
+
+  const t = atual ? trilhaDe(atual) : [], fs = atual ? filhos(atual) : [];
+  const escada = t.map((k, i) => (i ? `<span class="seta">›</span>` : "") + degrau(k)).join("") + (fs.length ? `<span class="seta">›</span>` + fs.map(k => degrau(k, true)).join("") : "");
+  const naCena = D.paginas.filter(p => p.na_cena);
+  const nomeEd = S.buf && (S.buf.nome || "a página nova");
+  const faixa = S.marcar ? `<div class="faixa">${S.edit ? `Toque no mapa onde fica ${esc(nomeEd)}` : "Toque no mapa onde fica o lugar novo"}<button type="button" data-cancela-marcar>Cancelar</button></div>`
+    : mestreAgora() && atual ? `<button type="button" class="mbt" data-marcar>+ Marcar lugar</button>` : "";
+
+  $("#app").innerHTML = `<div class="o3">
+   <div class="cab"><a class="volta" href="mesa.html?m=${encodeURIComponent(D.mesa.id)}" aria-label="Voltar para a mesa">‹</a>${trilhaHtml(atual)}<span class="esp"></span>
+     <div class="busca"><input id="busca" type="search" placeholder="Buscar lugar, PNJ, sessão…" autocomplete="off" aria-label="Buscar"><div class="res" hidden></div></div>
+     ${chaveJog()}${mestreAgora() ? `<button type="button" class="mbt" data-nova>+ Página</button>` : ""}</div>
+   <div class="mapa">${atual ? `<div data-visor style="position:absolute;inset:0"></div>` : semMapa()}<div class="sobre">${faixa}</div>${atual ? legenda() : ""}</div>
+   <div class="cartas"><div class="carta"><h4>${S.edit ? (S.buf.id ? "Editando" : "Página nova") : "Selecionado"}</h4>${S.edit ? edicao() : sel ? pagina(sel) : `<p class="vazio">${atual ? "Toque num lugar do mapa." : "Nada selecionado."}</p>`}</div>
+    ${mestreAgora() ? `<div class="carta"><h4>Na cena</h4>${naCena.length ? `<div class="cena">${naCena.map(p => `<a href="#" data-p="${p.id}"><span>${esc(p.nome)}</span><small>${esc(p.tipo)}</small></a>`).join("")}</div>` : `<p class="vazio" style="font-size:14px">Ninguém na cena. Marque "Na cena agora" na página de um PNJ ou monstro.</p>`}</div>` : ""}</div>
+   <div class="escada">${escada}<span class="esp" style="flex:1"></span>${mestreAgora() && atual ? `<button type="button" class="mbt forte" data-mostra ${D.mesa.imagem_atual === atual.imagem ? "disabled" : ""}>${D.mesa.imagem_atual === atual.imagem ? "Já está na tela da sala" : "Mostrar aos jogadores"}</button>` : ""}</div></div>`;
+  const h = $("[data-visor]"); if (h) montaVisor(h, atual);
+  ligaBusca($("#busca"));
+  document.querySelectorAll("img[data-img]").forEach(carregaImg);
+  if (S.edit && !S.buf.id && !S.buf.nome) setTimeout(() => { const n = $("#ed-nome"); if (n) n.focus() }, 0);
+}
+function semMapa() {
+  return `<div class="sem-mapa"><div>${mestreAgora()
+    ? `<b>Comece pelo mapa do mundo</b><span>Envie a imagem do mapa (do mundo, da região ou da cidade onde a campanha começa). Depois marque os lugares em cima dela.</span><button type="button" class="mbt forte" data-envia-raiz>Enviar imagem do mapa</button>`
+    : `<b>Nenhum mapa ainda</b><span>${D.mestre ? "Os jogadores ainda não veem nenhum mapa." : "O mestre ainda não mostrou o mundo."}</span>`}</div></div>`;
+}
+async function carregaImg(img) {
+  const c = img.dataset.img;
+  try { if (!IMG[c]) IMG[c] = await MD.imagem(c); if (img.isConnected) img.src = IMG[c] } catch (e) { }
+}
+
+/* ---------- visor: arrastar, pinça, roda do mouse, alfinetes ---------- */
+function pinsDoMapa(m) {
+  const lista = D.paginas.filter(p => p.mapa_id === m.id && p.x != null && vivo(p) && !(S.edit && p.id === S.buf.id));
+  if (S.edit && S.buf.mapa_id === m.id && S.buf.x != null) lista.push({ ...S.buf, id: S.buf.id || "rascunho", rascunho: true });
+  return lista;
+}
+function montaVisor(host, m) {
+  const pins = pinsDoMapa(m).map(p => {
+    const g = GRUPO(p.tipo), rot = g === "salas" ? `<i>${esc((String(p.nome).match(/^\d+/) || [String(p.nome).charAt(0)])[0])}</i>` : `<i></i><span>${esc(p.nome || "Página nova")}</span>`;
+    return `<button type="button" class="pin g-${g} v-${p.estado}${(S.edit ? p.rascunho : S.pag === p.id) ? " ativo" : ""}${p.rascunho ? " rascunho" : ""}" data-p="${p.rascunho ? "" : p.id}" data-pin="${p.id}" style="left:${p.x * 100}%;top:${p.y * 100}%" aria-label="${esc(p.nome)}">${rot}</button>`;
+  }).join("");
+  host.innerHTML = `<div class="vp${S.jog || !D.mestre ? " jog" : ""}${S.marcar ? " marcando" : ""}"><div class="cam" style="width:${m.largura}px;height:${m.altura}px"><img data-img="${esc(m.imagem)}" alt="Mapa: ${esc(nomeMapa(m))}">${pins}</div>
+    <div class="zm"><button type="button" data-zoom="1" aria-label="Aproximar">+</button><button type="button" data-zoom="-1" aria-label="Afastar">−</button><button type="button" data-zoom="0" aria-label="Ver o mapa inteiro">⤢</button></div></div>`;
+  const vp = host.querySelector(".vp"), cam = host.querySelector(".cam");
+  const W = vp.clientWidth, H = vp.clientHeight, zMin = Math.min(W / m.largura, H / m.altura), zMax = Math.max(4, zMin * 8);
+  let v = S.vw[m.id];
+  if (!v || v.W !== W || v.H !== H) v = S.vw[m.id] = { z: zMin, tx: (W - m.largura * zMin) / 2, ty: (H - m.altura * zMin) / 2, W, H };
+  const ap = () => { cam.style.transform = `translate(${v.tx}px,${v.ty}px) scale(${v.z})`; cam.style.setProperty("--iz", (1 / v.z).toFixed(4)) }; ap();
+  const zoom = (z, mx, my) => { z = Math.min(zMax, Math.max(zMin, z)); v.tx = mx - (mx - v.tx) * z / v.z; v.ty = my - (my - v.ty) * z / v.z; v.z = z; ap() };
+  const local = e => { const r = vp.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top } };
+  const fracao = q => ({ x: Math.min(1, Math.max(0, (q.x - v.tx) / v.z / m.largura)), y: Math.min(1, Math.max(0, (q.y - v.ty) / v.z / m.altura)) });
+  vp.addEventListener("wheel", e => { e.preventDefault(); const q = local(e); zoom(v.z * Math.exp(-e.deltaY / 400), q.x, q.y) }, { passive: false });
+
+  const pts = new Map(); let ini = null, toque = null;
+  const comeco = () => {
+    const p = [...pts.values()];
+    if (p.length >= 2) { const [a, b] = p; return { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2, z: v.z, tx: v.tx, ty: v.ty } }
+    if (p.length === 1) return { x: p[0].x, y: p[0].y, tx: v.tx, ty: v.ty };
+    return null;
+  };
+  vp.addEventListener("pointerdown", e => {
+    if (e.target.closest(".zm")) return;
+    vp.setPointerCapture(e.pointerId); pts.set(e.pointerId, local(e)); ini = comeco();
+    const pin = e.target.closest(".pin");
+    toque = pts.size === 1 ? { ...local(e), mov: false, pin: pin && pin.dataset.pin, el: pin } : null;
+  });
+  vp.addEventListener("pointermove", e => {
+    if (!pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, local(e));
+    const p = [...pts.values()];
+    if (p.length >= 2 && ini && ini.d) {
+      const [a, b] = p, d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+      const z = Math.min(zMax, Math.max(zMin, ini.z * d / ini.d));
+      v.tx = cx - (ini.cx - ini.tx) * z / ini.z; v.ty = cy - (ini.cy - ini.ty) * z / ini.z; v.z = z; ap();
+    } else if (p.length === 1 && ini && ini.x !== undefined) {
+      const q = p[0];
+      if (toque && !toque.mov && Math.hypot(q.x - toque.x, q.y - toque.y) > 6) { toque.mov = true; vp.classList.add("arrasta") }
+      if (toque && toque.mov && toque.pin && mestreAgora()) {
+        const f = fracao(q); toque.f = f; toque.el.style.left = f.x * 100 + "%"; toque.el.style.top = f.y * 100 + "%";
+      } else if (!toque || toque.mov) { v.tx = ini.tx + q.x - ini.x; v.ty = ini.ty + q.y - ini.y; ap() }
+    }
+  });
+  const solta = e => {
+    if (!pts.has(e.pointerId)) return;
+    const q = pts.get(e.pointerId); pts.delete(e.pointerId); vp.classList.remove("arrasta");
+    const t = toque; if (pts.size) toque = null; ini = comeco();
+    if (pts.size || !t || e.type === "pointercancel") return;
+    toque = null;
+    if (t.mov) { if (t.pin && t.f && mestreAgora()) moverPin(t.pin, t.f); return }
+    if (S.marcar) { marcarEm(fracao(q)); return }
+    if (t.pin && t.pin !== "rascunho") abrirPagina(t.pin, true);
+  };
+  vp.addEventListener("pointerup", solta); vp.addEventListener("pointercancel", solta);
+  host.querySelector(".zm").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return; const d = +b.dataset.zoom;
+    if (d === 0) { v.z = zMin; v.tx = (W - m.largura * zMin) / 2; v.ty = (H - m.altura * zMin) / 2; ap() } else zoom(v.z * (d > 0 ? 1.3 : 1 / 1.3), W / 2, H / 2);
+  });
+}
+
+/* ---------- ações ---------- */
+function aviso(txt, ruim) { document.querySelectorAll(".aviso").forEach(a => a.remove()); const a = document.createElement("div"); a.className = "aviso" + (ruim ? " erro" : ""); a.setAttribute("role", "status"); a.textContent = txt; document.body.append(a); setTimeout(() => a.remove(), ruim ? 5000 : 2600) }
+const falhou = (x, o) => { console.error(x); aviso("Não consegui " + o + ". Confira a internet e tente de novo.", true) };
+function confirmar(bt, texto, acao) {
+  if (bt.dataset.conf) { acao(); return }
+  const antes = bt.textContent; bt.dataset.conf = "1"; bt.textContent = texto; bt.classList.add("conf");
+  setTimeout(() => { if (bt.isConnected) { delete bt.dataset.conf; bt.textContent = antes; bt.classList.remove("conf") } }, 3500);
+}
+function trocar(linha) { const i = D.paginas.findIndex(p => p.id === linha.id); if (i < 0) D.paginas.push(linha); else D.paginas[i] = linha; D.paginas.sort((a, b) => a.nome.localeCompare(b.nome, "pt")) }
+
+function abrirPagina(id, doMapa) {
+  const p = pg(id); if (!p) return;
+  S.pag = id; S.edit = false; S.marcar = false;
+  if (!doMapa && p.mapa_id && mapaVivo(mp(p.mapa_id))) S.mapa = p.mapa_id;
+  render();
+}
+function editar(p) {
+  S.edit = true; S.marcar = false;
+  S.buf = p ? { ...p, segredo: D.seg[p.id] || "" } : { tipo: "Lugar", nome: "", texto: "", segredo: "", estado: "oculto", na_cena: false, mapa_id: null, x: null, y: null };
+  render();
+}
+function lerForm() {
+  const f = $("form[data-form]"); if (!f) return;
+  const d = new FormData(f);
+  Object.assign(S.buf, { nome: String(d.get("nome") || ""), tipo: String(d.get("tipo") || ""), texto: String(d.get("texto") || ""), segredo: String(d.get("segredo") || ""), estado: String(d.get("estado") || "oculto"), na_cena: d.get("na_cena") !== null });
+}
+/* grava o rascunho; continuar = segue editando (para enviar o mapa de uma página nova) */
+async function salvar(continuar) {
+  lerForm();
+  const b = S.buf, nome = b.nome.trim() || "Sem nome";
+  const outra = D.paginas.find(p => p.id !== b.id && chave(p.nome) === chave(nome));
+  if (outra) { aviso("Já existe uma página chamada " + outra.nome + ". Use outro nome.", true); return false }
+  const segAntes = b.id ? D.seg[b.id] || "" : "";
+  try {
+    const linha = await MD.salvarPagina({ id: b.id, nome, tipo: b.tipo.trim() || "Lugar", texto: b.texto, estado: b.estado, na_cena: b.na_cena, mapa_id: b.mapa_id || null, x: b.mapa_id ? b.x : null, y: b.mapa_id ? b.y : null });
+    if (b.segredo !== segAntes || !b.id) await MD.salvarSegredo(linha.id, b.segredo);
+    D.seg[linha.id] = b.segredo; trocar(linha); MD.avisar();
+    if (continuar) { S.buf = { ...linha, segredo: b.segredo } } else { S.edit = false; S.buf = null; S.pag = linha.id }
+    return true;
+  } catch (x) { falhou(x, "salvar a página"); return false }
+}
+async function moverPin(id, f) {
+  if (S.edit && (id === "rascunho" || id === S.buf.id)) { lerForm(); Object.assign(S.buf, { x: f.x, y: f.y }); render(); return }
+  const p = pg(id); if (!p) return;
+  try { trocar(await MD.salvarPagina({ id, x: f.x, y: f.y })); MD.avisar() } catch (x) { falhou(x, "mover o alfinete") }
+  render();
+}
+function marcarEm(f) {
+  S.marcar = false;
+  if (S.edit) Object.assign(S.buf, { mapa_id: S.mapa, x: f.x, y: f.y });
+  else { editar(null); Object.assign(S.buf, { mapa_id: S.mapa, x: f.x, y: f.y }) }
+  render();
+}
+let PEDIDO = null;   // o que fazer com a imagem escolhida
+function pedirImagem(acao) { PEDIDO = acao; $("#arq").click() }
+$("#arq").onchange = async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ""; if (!f || !PEDIDO) return;
+  const acao = PEDIDO; PEDIDO = null;
+  aviso("Enviando a imagem…");
+  try { await acao(f) } catch (x) { falhou(x, "enviar a imagem") }
+};
+
+$("#app").addEventListener("click", async e => {
+  const el = e.target.closest("[data-p],[data-novo],[data-ciclo],[data-abre],[data-mapa],[data-jog],[data-mostra],[data-editar],[data-cancelar],[data-apagar],[data-nova],[data-marcar],[data-marcar-pag],[data-cancela-marcar],[data-tirar],[data-envia-mapa],[data-apaga-mapa],[data-envia-raiz]");
+  if (!el || el.matches("input")) return;
+  if (el.matches(".pin") && el.closest(".vp") && e.detail) return;   // toque de mouse no alfinete já é tratado pelo visor
+  e.preventDefault(); const d = el.dataset;
+  if (d.p !== undefined) { if (d.p) abrirPagina(d.p, !!el.closest(".vp")); return }
+  if (d.novo !== undefined) { editar(null); S.buf.nome = d.novo; render(); return }
+  if (d.ciclo) {
+    const p = pg(d.ciclo), novo = CICLO[p.estado];
+    try { trocar(await MD.salvarPagina({ id: p.id, estado: novo })); MD.avisar() } catch (x) { falhou(x, "mudar o estado") }
+    render(); return;
+  }
+  if (d.abre) { S.mapa = d.abre; S.pag = null; S.marcar = false; if (S.edit) lerForm(); render(); return }
+  if (d.mapa) { S.mapa = d.mapa; S.marcar = false; if (S.edit) lerForm(); render(); return }
+  if (d.jog !== undefined) { S.jog = !S.jog; S.edit = false; S.buf = null; S.marcar = false; render(); return }
+  if (d.mostra !== undefined) {
+    const m = mp(S.mapa);
+    try { await MD.mostrar(m, nomeMapa(m)); D.mesa.imagem_atual = m.imagem; aviso("Os jogadores agora veem na sala: " + nomeMapa(m)) } catch (x) { falhou(x, "mostrar o mapa") }
+    render(); return;
+  }
+  if (d.editar !== undefined) { editar(pg(S.pag)); return }
+  if (d.nova !== undefined) { editar(null); return }
+  if (d.cancelar !== undefined) { S.edit = false; S.buf = null; S.marcar = false; render(); return }
+  if (d.apagar !== undefined) {
+    confirmar(el, "Apagar mesmo?", async () => {
+      const id = S.buf.id, subs = D.mapas.filter(m => m.lugar_id === id);
+      try {
+        await MD.apagarPagina(id, subs);
+        D.paginas = D.paginas.filter(p => p.id !== id); D.mapas = D.mapas.filter(m => m.lugar_id !== id); delete D.seg[id];
+        D.paginas.forEach(p => { if (subs.some(m => m.id === p.mapa_id)) p.mapa_id = null });
+        S.edit = false; S.buf = null; S.pag = null; MD.avisar(); render(); aviso("Página apagada.");
+      } catch (x) { falhou(x, "apagar a página") }
+    });
+    return;
+  }
+  if (d.marcar !== undefined) { S.marcar = true; render(); return }
+  if (d.marcarPag !== undefined) { lerForm(); S.marcar = true; render(); return }
+  if (d.cancelaMarcar !== undefined) { if (S.edit) lerForm(); S.marcar = false; render(); return }
+  if (d.tirar !== undefined) { lerForm(); Object.assign(S.buf, { mapa_id: null, x: null, y: null }); render(); return }
+  if (d.enviaMapa !== undefined) {
+    // o seletor de arquivo tem de abrir já no toque (o iPad recusa depois de uma espera); a página já existe, o rascunho continua
+    lerForm(); const id = S.buf.id, nome = pg(id).nome;
+    pedirImagem(async f => { const m = await MD.criarMapa(f, nome, id); D.mapas.push(m); MD.avisar(); aviso("Mapa enviado. Salve e toque em Abrir o mapa para marcar os lugares dele."); render() });
+    return;
+  }
+  if (d.apagaMapa) {
+    confirmar(el, "Apagar o mapa?", async () => {
+      const m = mp(d.apagaMapa);
+      try {
+        await MD.apagarMapa(m);
+        D.mapas = D.mapas.filter(x => x.id !== m.id); D.paginas.forEach(p => { if (p.mapa_id === m.id) p.mapa_id = null });
+        MD.avisar(); lerForm(); render(); aviso("Mapa apagado. Os lugares dele ficaram fora do mapa.");
+      } catch (x) { falhou(x, "apagar o mapa") }
+    });
+    return;
+  }
+  if (d.enviaRaiz !== undefined) { pedirImagem(async f => { const m = await MD.criarMapa(f, "Mundo", null); D.mapas.push(m); S.mapa = m.id; MD.avisar(); aviso("Mapa enviado. Toque em + Marcar lugar para pôr o primeiro lugar."); render() }) }
+});
+$("#app").addEventListener("input", e => { if (S.edit && e.target.closest("form[data-form]")) lerForm() });
+$("#app").addEventListener("submit", e => { e.preventDefault(); salvar(false).then(ok => { if (ok) render() }) });
+addEventListener("keydown", e => { if (e.key === "Escape" && S.marcar) { if (S.edit) lerForm(); S.marcar = false; render() } });
+
+function ligaBusca(inp) {
+  const res = inp.nextElementSibling;
+  const mostra = () => {
+    const q = chave(inp.value);
+    const ks = (q ? D.paginas.filter(p => vivo(p) && chave(p.nome).includes(q)) : D.paginas.filter(vivo).slice().sort((a, b) => String(b.atualizado_em || "").localeCompare(String(a.atualizado_em || "")))).slice(0, 8);
+    res.innerHTML = ks.length ? ks.map(p => `<a href="#" data-p="${p.id}">${esc(p.nome)}<small>${esc(p.tipo)}</small></a>`).join("") : `<a href="#" tabindex="-1">${q ? "Nada com " + esc(inp.value) : "Nenhuma página ainda"}<small></small></a>`;
+    res.hidden = false;
+  };
+  inp.addEventListener("input", mostra); inp.addEventListener("focus", mostra);
+  inp.addEventListener("blur", () => setTimeout(() => { if (res.isConnected) res.hidden = true }, 200));
+}
+let ultW = innerWidth, ultH = innerHeight;
+addEventListener("resize", () => {
+  if (!D || (innerWidth === ultW && innerHeight === ultH)) return;
+  // o teclado do iPad muda a altura: redesenhar ali tiraria o foco do campo em que se digita
+  if (document.activeElement && document.activeElement.matches("input,textarea") && innerWidth === ultW) return;
+  ultW = innerWidth; ultH = innerHeight; if (S.edit) lerForm(); render();
+});
+
+/* ---------- entrada ---------- */
+async function iniciar() {
+  D = await MD.carregar();
+  S.jog = !D.mestre; S.edit = false; S.buf = null; S.marcar = false;
+  document.title = "Mundo · " + D.mesa.nome;
+  render();
+}
+let RECARGA = null;
+async function recarregar() {
+  clearTimeout(RECARGA);
+  RECARGA = setTimeout(async () => {
+    if (S.edit || S.marcar) return;   // não atrapalha o mestre no meio de uma edição
+    try { const n = await MD.carregar(); D = n; render() } catch (x) { }
+  }, 400);
+}
+iniciar().then(() => {
+  MD.ouvir(recarregar);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) recarregar() });
+}).catch(x => {
+  if (x && x.message === "sem login") return;
+  $("#app").innerHTML = `<div class="carregando"><div><b>${x && x.message === "sem mesa" ? "Não achei essa mesa, ou você não está nela." : "Não consegui abrir o mundo."}</b><a class="lnk" href="index.html">Voltar ao início</a></div></div>`;
+});
+</script>
+</body>
+</html>

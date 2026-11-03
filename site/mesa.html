@@ -22,6 +22,7 @@
   <div style="display:grid;gap:4px"><h1 id="m-nome">Mesa</h1><p class="mute" id="m-papel"></p></div>
   <p class="msg erro" id="m-erro" hidden></p>
   <a class="bt" id="bt-sala" href="#">Abrir a sala</a>
+  <a class="bt sec" id="bt-mundo" href="#">Abrir o mundo</a>
 
   <section id="s-convite" hidden>
     <h2>Convite</h2>
@@ -61,11 +62,11 @@ function erro(t) { const e = $("#m-erro"); e.textContent = t; e.hidden = !t }
 async function carregar() {
   EU = (await smExigirLogin()).user;
   const { data, error } = await sb.from("mesas").select("id,nome,mestre_id,codigo").eq("id", M).maybeSingle();
-  if (error || !data) { erro("Não achei essa mesa, ou você não está nela."); $("#bt-sala").hidden = true; return }
+  if (error || !data) { erro("Não achei essa mesa, ou você não está nela."); $("#bt-sala").hidden = $("#bt-mundo").hidden = true; return }
   MESA = data; MESTRE = data.mestre_id === EU.id;
   document.title = data.nome + " · Sala de Mesa";
   $("#m-nome").textContent = data.nome;
-  $("#bt-sala").href = "sala.html?m=" + M;
+  $("#bt-sala").href = "sala.html?m=" + M; $("#bt-mundo").href = "mundo.html?m=" + M;
   $("#s-convite").hidden = !MESTRE; $("#docs-mestre").hidden = !MESTRE;
   if (MESTRE) $("#m-cod").textContent = data.codigo;
   $("#docs-nota").textContent = MESTRE
