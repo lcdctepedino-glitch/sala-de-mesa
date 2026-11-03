@@ -48,6 +48,13 @@
       <input type="file" id="arq-doc" hidden accept="image/*,.pdf,.txt,.md,.docx,application/pdf,text/plain,text/markdown,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
     </div>
   </section>
+
+  <section id="s-apagar" hidden>
+    <h2>Apagar a mesa</h2>
+    <p class="nota" style="margin-bottom:8px">Apaga a mesa, o mundo, os mapas e os documentos dela. Os personagens dos jogadores não são apagados: continuam na conta de cada um, só saem desta mesa.</p>
+    <button class="bt sec" id="bt-apagar" type="button">Apagar esta mesa</button>
+    <p class="msg" id="apagar-msg" role="status"></p>
+  </section>
 </main>
 
 <script src="js/supabase.js"></script>
@@ -67,7 +74,7 @@ async function carregar() {
   document.title = data.nome + " · Sala de Mesa";
   $("#m-nome").textContent = data.nome;
   $("#bt-sala").href = "sala.html?m=" + M; $("#bt-mundo").href = "mundo.html?m=" + M;
-  $("#s-convite").hidden = !MESTRE; $("#docs-mestre").hidden = !MESTRE;
+  $("#s-convite").hidden = !MESTRE; $("#docs-mestre").hidden = !MESTRE; $("#s-apagar").hidden = !MESTRE;
   if (MESTRE) $("#m-cod").textContent = data.codigo;
   $("#docs-nota").textContent = MESTRE
     ? "Documentos novos ficam só com você. Toque em Liberar para a mesa toda ver."
@@ -123,6 +130,21 @@ $("#arq-doc").onchange = async e => {
   docMsg("Enviado. Ele fica só com você até você tocar em Liberar.");
   documentos();
 };
+/* apagar a mesa: primeiro os arquivos (depois de apagar a mesa o Storage não reconhece mais o mestre),
+   depois a linha; o banco apaga o mundo junto e tira os personagens da mesa sem apagá-los */
+$("#bt-apagar").onclick = e => smConfirmar(e.currentTarget, "Toque de novo para apagar " + MESA.nome, async () => {
+  const bt = $("#bt-apagar"), msg = $("#apagar-msg"); bt.disabled = true; msg.className = "msg"; msg.textContent = "Apagando…";
+  try {
+    for (const p of ["mapas", "mestre", "jogadores", "mundo"]) {
+      for (let i = 0; i < 50; i++) {
+        const arqs = await smListar(M + "/" + p); if (!arqs.length) break;
+        const { error } = await sb.storage.from("mesas").remove(arqs.map(f => M + "/" + p + "/" + f.name)); if (error) throw error;
+      }
+    }
+    const { error } = await sb.from("mesas").delete().eq("id", M); if (error) throw error;
+    location.href = "index.html";
+  } catch (x) { console.error(x); bt.disabled = false; msg.className = "msg erro"; msg.textContent = "Não consegui apagar a mesa. Confira a internet e tente de novo." }
+});
 $("#bt-copiar").onclick = async e => {
   const b = e.currentTarget;
   try { await navigator.clipboard.writeText(MESA.codigo); b.textContent = "Copiado" } catch (x) { b.textContent = "Código: " + MESA.codigo }
