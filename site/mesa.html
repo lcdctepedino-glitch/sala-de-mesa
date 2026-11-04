@@ -29,11 +29,19 @@
     <a class="lnk" href="mundos.html" style="padding:0">Criar ou editar mundos ›</a>
   </div>
 
-  <section id="s-convite" hidden>
-    <h2>Convite</h2>
+  <section id="s-convite" hidden style="display:grid;gap:12px">
+    <h2 style="margin:0">Convite</h2>
+    <div class="caixa">
+      <button class="bt" id="bt-chamar" type="button">Chamar amigo</button>
+      <div id="chamar-res" hidden style="display:grid;gap:8px">
+        <input id="chamar-link" readonly aria-label="Link do convite">
+        <button class="bt sec" id="bt-copiar-link" type="button">Copiar link</button>
+      </div>
+      <p class="nota" id="chamar-nota">Gera um link para mandar a um amigo. Ele abre, escolhe um usuário e uma senha e já cai nesta mesa. Cada link vale para uma pessoa, por 7 dias.</p>
+    </div>
     <div class="caixa">
       <div class="codigo" id="m-cod"></div>
-      <p class="nota">Os jogadores entram em Início → Entrar numa mesa, digitam este código e escolhem o personagem.</p>
+      <p class="nota">Quem já tem conta entra em Início, toca em Entrar numa mesa, digita este código e escolhe o personagem.</p>
       <button class="bt sec" id="bt-copiar" type="button">Copiar código</button>
     </div>
   </section>
@@ -41,6 +49,11 @@
   <section>
     <h2>Na mesa</h2>
     <div class="lista" id="l-gente"></div>
+    <div class="caixa" id="senha-res" hidden style="margin-top:12px">
+      <p class="nota" id="senha-nota"></p>
+      <input id="senha-link" readonly aria-label="Link de senha nova">
+      <button class="bt sec" id="bt-copiar-senha" type="button">Copiar link</button>
+    </div>
   </section>
 
   <section>
@@ -68,6 +81,12 @@
 <script>
 const $ = s => document.querySelector(s);
 const M = smParam("m");
+const ADMIN = "bc2f6a40-d4ee-4c61-95d0-384200b4c0f6";   // quem cuida do site (o banco confere de novo)
+const linkDe = tok => new URL("index.html?convite=" + tok, location.href).href;
+async function copiar(txt, bt, rotulo) {
+  try { await navigator.clipboard.writeText(txt); bt.textContent = "Copiado" } catch (x) { bt.textContent = "Selecione o link e copie" }
+  setTimeout(() => bt.textContent = rotulo, 2500);
+}
 let EU, MESA, MESTRE = false;
 
 function erro(t) { const e = $("#m-erro"); e.textContent = t; e.hidden = !t }
@@ -112,9 +131,10 @@ async function pessoas() {
   const l = $("#l-gente"); l.textContent = "";
   $("#m-papel").textContent = MESTRE ? "Você é o mestre." : "Mestre: " + (nome[MESA.mestre_id] || "—");
   l.append(smEl("div", { class: "item", style: "cursor:default" }, smEl("b", {}, nome[MESA.mestre_id] || "Mestre"), smEl("small", {}, "mestre")));
-  (fichas || []).forEach(f => l.append(smEl("div", { class: "item", style: "cursor:default" }, smEl("b", {}, f.nome), smEl("small", {}, nome[f.dono_id] || ""))));
+  (fichas || []).forEach(f => l.append(smEl("div", { class: "item", style: "cursor:default" }, smEl("b", {}, f.nome), smEl("small", {}, nome[f.dono_id] || ""),
+    EU.id === ADMIN && f.dono_id !== EU.id ? smEl("button", { class: "mini-bt", type: "button", style: "grid-row:1/3;grid-column:2", onclick: e => linkSenha(e.currentTarget, f.dono_id, nome[f.dono_id] || f.nome) }, "Link de senha nova") : null)));
   if (!MESTRE) l.append(smEl("p", { class: "nota", style: "margin-top:8px" }, "Você vê aqui o seu personagem. As fichas dos outros jogadores ficam só com eles e com o mestre."));
-  else if (!(fichas || []).length) l.append(smEl("p", { class: "vazio" }, "Nenhum jogador entrou ainda. Passe o código do convite."));
+  else if (!(fichas || []).length) l.append(smEl("p", { class: "vazio" }, "Nenhum jogador entrou ainda. Toque em Chamar amigo e mande o link."));
 }
 
 async function documentos() {
@@ -167,6 +187,26 @@ $("#bt-apagar").onclick = e => smConfirmar(e.currentTarget, "Toque de novo para 
     location.href = "index.html";
   } catch (x) { console.error(x); bt.disabled = false; msg.className = "msg erro"; msg.textContent = "Não consegui apagar a mesa. Confira a internet e tente de novo." }
 });
+/* chamar amigo: link de uso único para criar conta e cair nesta mesa */
+$("#bt-chamar").onclick = async e => {
+  const b = e.currentTarget, nota = $("#chamar-nota"); b.disabled = true;
+  const { data, error } = await sb.rpc("criar_convite", { p_mesa: M }); b.disabled = false;
+  if (error) { nota.className = "msg erro"; nota.textContent = "Não consegui gerar o link. Confira a internet e tente de novo."; return }
+  $("#chamar-link").value = linkDe(data); $("#chamar-res").hidden = false; b.textContent = "Chamar outro amigo";
+  nota.className = "nota"; nota.textContent = "Mande este link para um amigo. Ele vale para uma pessoa só, por 7 dias. Para chamar mais gente, gere um link para cada um.";
+  $("#chamar-link").select();
+};
+$("#bt-copiar-link").onclick = e => copiar($("#chamar-link").value, e.currentTarget, "Copiar link");
+/* esqueceu a senha: o administrador gera um link de senha nova (vale uma vez, por 7 dias) */
+async function linkSenha(bt, jogador, quem) {
+  bt.disabled = true;
+  const { data, error } = await sb.rpc("criar_link_conta", { p_jogador: jogador, p_uso: "senha" }); bt.disabled = false;
+  const box = $("#senha-res"); box.hidden = false;
+  if (error) { $("#senha-nota").textContent = "Não consegui gerar o link. Tente de novo."; return }
+  $("#senha-nota").textContent = "Link para " + quem + " criar uma senha nova. Vale uma vez, por 7 dias.";
+  $("#senha-link").value = linkDe(data); $("#senha-link").select();
+}
+$("#bt-copiar-senha").onclick = e => copiar($("#senha-link").value, e.currentTarget, "Copiar link");
 $("#bt-copiar").onclick = async e => {
   const b = e.currentTarget;
   try { await navigator.clipboard.writeText(MESA.codigo); b.textContent = "Copiado" } catch (x) { b.textContent = "Código: " + MESA.codigo }

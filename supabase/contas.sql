@@ -1,0 +1,23 @@
+-- Contas sem e-mail (04/11/2026). Migração "contas_1_convite_sem_email": o texto completo está no próprio banco,
+-- em supabase_migrations.schema_migrations (name = 'contas_1_convite_sem_email'). Aqui fica o resumo de como funciona.
+--
+-- Ninguém digita e-mail. O "e-mail" que o Supabase exige vira <usuario>@sala-de-mesa.invalid (endereço que não existe).
+-- Exceção: a conta do Lucas continua com o e-mail dele (o site aceita "@" no campo Usuário).
+--
+-- Cadastro fechado: gatilho cadastro_so_com_convite (BEFORE INSERT em auth.users) recusa qualquer conta nova,
+--   a não ser que a variável de sessão sala.criando_conta = 'sim' (só a função usar_convite liga, e desliga em seguida).
+--   Para criar conta de teste por SQL: with c as (select set_config('sala.criando_conta','sim',true)) insert ... from c.
+--
+-- Convite = linha tipo 'convite' em mesa_conteudo (sem tabela nova). Guarda só o hash sha256 do link, o uso,
+--   o prazo (7 dias) e, depois de usado, usado_em/usado_por. Ninguém lê nem grava convite direto
+--   (pode_mexer devolve false para 'convite'); tudo passa pelas funções:
+--   criar_convite(p_mesa)               -> mestre da mesa; link "novo" (cria conta e cai na mesa)
+--   criar_link_conta(p_jogador, p_uso)  -> só o administrador (privado.eh_admin = Lucas); p_uso 'migrar' (troca e-mail
+--                                          por usuário, mantém tudo) ou 'senha' (senha nova)
+--   ver_convite(p_token)                -> o que a página mostra (null se usado, vencido ou inventado)
+--   usar_convite(p_token, p_usuario, p_senha, p_nome) -> faz o uso e devolve {email interno, codigo da mesa}
+--     'migrar' também apaga o e-mail verdadeiro dos registros (one_time_tokens, flow_state, audit_log_entries);
+--     'migrar' e 'senha' derrubam as sessões antigas (refresh_tokens, sessions).
+-- Usuário: 3 a 24 caracteres, a-z 0-9 . _ - (começa com letra ou número), guardado em minúsculas. Senha: 6 a 72.
+-- Testado em 04/11/2026: 23 checagens no banco (bloco que se desfaz) e 13 no navegador (teste-convite.js).
+-- atalho: um administrador só, fixo no código (eh_admin); trocar quando houver mais de um.

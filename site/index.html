@@ -16,16 +16,31 @@
 <main class="pag" id="pag-login" hidden style="min-height:100dvh;align-content:center;max-width:440px">
   <div class="centro" style="display:grid;gap:8px">
     <div class="marca">Sala de Mesa</div>
-    <p class="mute" id="login-sub">Entre com a sua conta.</p>
+    <p class="mute" id="login-sub">Entre com o seu usuário.</p>
   </div>
   <form class="form" id="f-login" novalidate>
-    <label class="campo" id="c-nome" hidden><span>Seu nome na mesa</span><input id="in-nome" autocomplete="nickname" maxlength="40"></label>
-    <label class="campo"><span>E-mail</span><input id="in-email" type="email" autocomplete="email" inputmode="email" required></label>
+    <label class="campo"><span>Usuário</span><input id="in-email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required></label>
     <label class="campo"><span>Senha</span><input id="in-senha" type="password" autocomplete="current-password" minlength="6" required></label>
     <p class="msg" id="login-msg" role="status"></p>
     <button class="bt" id="bt-login" type="submit">Entrar</button>
-    <button class="lnk" id="bt-trocar" type="button" style="justify-self:center">Ainda não tenho conta · criar conta</button>
+    <p class="nota centro">Não tem conta ou esqueceu a senha? Peça um link ao mestre da sua mesa.</p>
   </form>
+</main>
+
+<!-- quem abre um link de convite: cria a conta, troca o e-mail por usuário ou põe senha nova -->
+<main class="pag" id="pag-convite" hidden style="min-height:100dvh;align-content:center;max-width:440px">
+  <div class="centro" style="display:grid;gap:8px">
+    <div class="marca">Sala de Mesa</div>
+    <p class="mute" id="cv-sub">Abrindo o convite…</p>
+  </div>
+  <form class="form" id="f-convite" novalidate hidden>
+    <label class="campo" id="cv-c-nome"><span>Seu nome na mesa</span><input id="cv-nome" maxlength="40" autocomplete="nickname"></label>
+    <label class="campo" id="cv-c-usuario"><span>Usuário</span><input id="cv-usuario" maxlength="24" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false"><small class="nota">É com ele que você entra. De 3 a 24 letras sem acento, números, ponto, traço ou sublinhado.</small></label>
+    <label class="campo"><span>Senha</span><input id="cv-senha" type="password" autocomplete="new-password" minlength="6" maxlength="72"></label>
+    <p class="msg" id="cv-msg" role="status"></p>
+    <button class="bt" id="bt-convite" type="submit">Criar conta</button>
+  </form>
+  <a class="lnk centro" href="index.html" id="cv-voltar" hidden>Ir para a entrada</a>
 </main>
 
 <main class="pag" id="pag-inicio" hidden>
@@ -70,12 +85,20 @@
 <script src="js/comum.js"></script>
 <script src="js/brasa.js"></script>
 <script>
-let modoCadastro = false, EU = null, FICHAS = [];
+let EU = null, FICHAS = [], CONVITE = null;
+/* sem e-mail: o usuário vira um endereço interno que não existe. Quem ainda entra com e-mail (o Lucas) digita o e-mail mesmo. */
+const DOMINIO = "@sala-de-mesa.invalid";
+const emailDe = u => { u = String(u || "").trim(); return u.includes("@") ? u : u.toLowerCase() + DOMINIO };
 const $ = s => document.querySelector(s);
 
 function traduzErro(e) {
   const m = String(e && e.message || e || "");
-  if (/Invalid login credentials/i.test(m)) return "E-mail ou senha errados.";
+  if (/Invalid login credentials/i.test(m)) return "Usuário ou senha errados.";
+  if (/convite_invalido/.test(m)) return "Este link não vale mais: já foi usado ou passou do prazo. Peça um novo a quem mandou.";
+  if (/usuario_em_uso/.test(m)) return "Esse usuário já existe. Escolha outro.";
+  if (/usuario_invalido/.test(m)) return "Use de 3 a 24 caracteres: letras sem acento, números, ponto, traço ou sublinhado.";
+  if (/senha_curta/.test(m)) return "A senha precisa ter de 6 a 72 caracteres.";
+  if (/falta_nome/.test(m)) return "Escreva o seu nome na mesa.";
   if (/Email not confirmed/i.test(m)) return "Falta confirmar o e-mail: abra a mensagem de confirmação que chegou na sua caixa de entrada.";
   if (/already registered|already exists/i.test(m)) return "Já existe uma conta com esse e-mail. Toque em \"Já tenho conta\" e entre.";
   if (/Password should be at least/i.test(m)) return "A senha precisa ter pelo menos 6 caracteres.";
@@ -86,40 +109,54 @@ function traduzErro(e) {
 }
 
 function telaLogin() {
-  $("#pag-inicio").hidden = true; $("#pag-login").hidden = false; SMBrasa.cena("brasas");
-  $("#c-nome").hidden = !modoCadastro;
-  $("#login-sub").textContent = modoCadastro ? "Crie a sua conta. Ela guarda os seus personagens e as suas mesas." : "Entre com a sua conta.";
-  $("#bt-login").textContent = modoCadastro ? "Criar conta" : "Entrar";
-  $("#bt-trocar").textContent = modoCadastro ? "Já tenho conta · entrar" : "Ainda não tenho conta · criar conta";
-  $("#in-senha").autocomplete = modoCadastro ? "new-password" : "current-password";
+  $("#pag-inicio").hidden = true; $("#pag-convite").hidden = true; $("#pag-login").hidden = false; SMBrasa.cena("brasas");
 }
-$("#bt-trocar").onclick = () => { modoCadastro = !modoCadastro; $("#login-msg").textContent = ""; telaLogin() };
 
 $("#f-login").onsubmit = async e => {
   e.preventDefault();
   const msg = $("#login-msg"), bt = $("#bt-login");
-  const email = $("#in-email").value.trim(), senha = $("#in-senha").value, nome = $("#in-nome").value.trim();
+  const usuario = $("#in-email").value.trim(), senha = $("#in-senha").value;
   msg.className = "msg erro";
-  if (!email || !senha) { msg.textContent = "Preencha o e-mail e a senha."; return }
-  if (modoCadastro && !nome) { msg.textContent = "Escreva o seu nome na mesa."; return }
-  if (senha.length < 6) { msg.textContent = "A senha precisa ter pelo menos 6 caracteres."; return }
-  bt.disabled = true; msg.className = "msg"; msg.textContent = modoCadastro ? "Criando a conta…" : "Entrando…";
+  if (!usuario || !senha) { msg.textContent = "Preencha o usuário e a senha."; return }
+  bt.disabled = true; msg.className = "msg"; msg.textContent = "Entrando…";
   try {
-    if (modoCadastro) {
-      const { data, error } = await sb.auth.signUp({ email, password: senha, options: { data: { nome }, emailRedirectTo: location.origin + location.pathname } });
-      if (error) throw error;
-      if (!data.session) { msg.className = "msg ok"; msg.textContent = "Conta criada. Abra o e-mail de confirmação que chegou para você e depois entre aqui."; modoCadastro = false; telaLogin(); return }
-    } else {
-      const { error } = await sb.auth.signInWithPassword({ email, password: senha });
-      if (error) throw error;
-    }
+    const { error } = await sb.auth.signInWithPassword({ email: emailDe(usuario), password: senha });
+    if (error) throw error;
     msg.textContent = "";
     await depoisDoLogin();
   } catch (x) { msg.className = "msg erro"; msg.textContent = traduzErro(x) }
   finally { bt.disabled = false }
 };
 
-$("#bt-sair").onclick = async () => { await sb.auth.signOut(); EU = null; modoCadastro = false; telaLogin() };
+/* ---------- link de convite ---------- */
+async function telaConvite(tok) {
+  $("#pag-login").hidden = true; $("#pag-inicio").hidden = true; $("#pag-convite").hidden = false; SMBrasa.cena("brasas");
+  const sub = $("#cv-sub");
+  const { data, error } = await sb.rpc("ver_convite", { p_token: tok });
+  if (error || !data) { sub.textContent = "Este link não vale mais: já foi usado ou passou do prazo. Peça um novo a quem mandou."; $("#cv-voltar").hidden = false; return }
+  CONVITE = { tok, ...data };
+  $("#cv-c-nome").hidden = data.uso !== "novo"; $("#cv-c-usuario").hidden = data.uso === "senha";
+  if (data.uso === "novo") { sub.textContent = (data.quem || "O mestre") + " chamou você para a mesa " + (data.mesa || "") + ". Escolha um usuário e uma senha para criar a sua conta."; $("#bt-convite").textContent = "Criar conta" }
+  else if (data.uso === "migrar") { sub.textContent = "Olá, " + (data.nome || "") + ". A Sala de Mesa não usa mais e-mail. Escolha um usuário e uma senha: seus personagens continuam com você."; $("#bt-convite").textContent = "Salvar e entrar" }
+  else { sub.textContent = "Crie uma senha nova para " + (data.usuario || data.nome || "a sua conta") + "."; $("#bt-convite").textContent = "Salvar a senha e entrar" }
+  $("#f-convite").hidden = false;
+  setTimeout(() => { const i = data.uso === "novo" ? $("#cv-nome") : data.uso === "migrar" ? $("#cv-usuario") : $("#cv-senha"); i.focus() }, 0);
+}
+$("#f-convite").onsubmit = async e => {
+  e.preventDefault();
+  const msg = $("#cv-msg"), bt = $("#bt-convite"), senha = $("#cv-senha").value;
+  bt.disabled = true; msg.className = "msg"; msg.textContent = "Salvando…";
+  try {
+    const { data, error } = await sb.rpc("usar_convite", { p_token: CONVITE.tok, p_usuario: $("#cv-usuario").value, p_senha: senha, p_nome: $("#cv-nome").value });
+    if (error) throw error;
+    await sb.auth.signOut();
+    const r = await sb.auth.signInWithPassword({ email: data.email, password: senha });
+    if (r.error) throw r.error;
+    location.replace("index.html" + (data.mesa ? "?mesa=" + encodeURIComponent(data.mesa) : ""));
+  } catch (x) { msg.className = "msg erro"; msg.textContent = traduzErro(x); bt.disabled = false }
+};
+
+$("#bt-sair").onclick = async () => { await sb.auth.signOut(); EU = null; telaLogin() };
 
 async function depoisDoLogin() {
   const volta = smParam("volta");
@@ -130,7 +167,7 @@ async function depoisDoLogin() {
 async function telaInicio() {
   const s = await smSessao(); if (!s) { telaLogin(); return }
   EU = s.user;
-  $("#pag-login").hidden = true; $("#pag-inicio").hidden = false; SMBrasa.cena("d20");
+  $("#pag-login").hidden = true; $("#pag-convite").hidden = true; $("#pag-inicio").hidden = false; SMBrasa.cena("d20");
   const [jog, mesas, fichas] = await Promise.all([
     sb.from("jogadores").select("nome").eq("id", EU.id).maybeSingle(),
     sb.from("mesas").select("id,nome,mestre_id").order("criado_em", { ascending: false }),
@@ -156,6 +193,12 @@ async function telaInicio() {
 
   const sel = $("#in-ficha"); sel.textContent = "";
   FICHAS.forEach(f => sel.append(smEl("option", { value: f.id }, (f.nome || "Sem nome") + (f.mesa_id ? " (já está em " + (nomeMesa[f.mesa_id] || "outra mesa") + ")" : ""))));
+  /* chegou pelo convite com o código da mesa: já abre "Entrar numa mesa" preenchido */
+  const cod = smParam("mesa");
+  if (cod) {
+    $("#f-entrar").hidden = false; $("#in-cod").value = cod;
+    const m = $("#entrar-msg"); m.className = "msg"; m.textContent = FICHAS.length ? "Escolha o personagem e toque em Entrar." : "Sua conta está pronta. Para entrar na mesa, crie primeiro um personagem em Criar ou editar personagens e volte aqui: o código da mesa é " + cod + ".";
+  }
 }
 
 $("#bt-entrar").onclick = () => { $("#f-abrir").hidden = true; $("#f-entrar").hidden = !$("#f-entrar").hidden;
@@ -184,7 +227,7 @@ $("#f-abrir").onsubmit = async e => {
   location.href = "mesa.html?m=" + data.id;
 };
 
-(async () => { const s = await smSessao(); if (s) await depoisDoLogin(); else telaLogin() })();
+(async () => { const tok = smParam("convite"); if (tok) return telaConvite(tok); const s = await smSessao(); if (s) await depoisDoLogin(); else telaLogin() })();
 </script>
 </body>
 </html>
