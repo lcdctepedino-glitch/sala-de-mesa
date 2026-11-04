@@ -1,7 +1,7 @@
 -- Área Mundo (tela "Mesa do mestre"), numa tabela só: public.mesa_conteudo.
 -- Decisão do Lucas (03/11/2026): nada de tabela nova a cada recurso. Cada linha tem um "tipo":
 --   'pagina' = lugar, PNJ ou sessão (categoria), com estado oculto/conhecido/visitado e o segredo do mestre;
---   'mapa'   = imagem de mapa (no bucket mesas, pasta <mesa>/mundo/).
+--   'mapa'   = imagem de mapa (era a pasta <mesa>/mundo/; desde 04/11 é mundos/<mundo>/, ver o fim do arquivo).
 -- Recurso novo da mesa (desenho do editor de mapas, marcadores, notas...) entra como TIPO NOVO aqui,
 -- usando as colunas que servirem e "dados" (jsonb) para o resto.
 -- O mestre lê e escreve direto; o jogador só recebe o mundo pela função mundo_jogador, já filtrado
@@ -96,3 +96,105 @@ create policy "mesas: mestre muda" on storage.objects for update to authenticate
   using (bucket_id = 'mesas' and privado.eh_mestre_txt((storage.foldername(name))[1]))
   with check (bucket_id = 'mesas' and privado.eh_mestre_txt((storage.foldername(name))[1])
               and (storage.foldername(name))[2] = any (array['mapas','mestre','jogadores','mundo']));
+
+
+-- ===================================================================================================
+-- MUNDOS DO MESTRE (04/11/2026), na mesma tabela. Migrações mundos_1 a mundos_6.
+-- O mundo é do mestre e serve a várias mesas; cada mesa tem as próprias descobertas.
+--   'mundo'      = a linha-raiz, com dono_id (o mestre);
+--   'pagina'     = lugar, PNJ ou sessão do mundo (mundo_id);
+--   'mapa'       = mapa do mundo (mundo_id); com lugar_id é a planta daquele lugar; o desenho fica em dados.desenho;
+--   'descoberta' = o que UMA mesa já sabe de um lugar (mesa_id + lugar_id, estado e na_cena).
+-- Arquivos dos mundos no bucket mesas, pasta mundos/<mundo_id>/.
+-- Testado em 04/11/2026: 25 checagens (2 mesas no mesmo mundo, intruso, apagar lugar e mundo), tudo OK.
+
+-- mundos_1_colunas
+alter table public.mesa_conteudo
+  add column dono_id uuid references auth.users(id) on delete cascade,
+  add column mundo_id uuid references public.mesa_conteudo(id) on delete cascade,
+  alter column mesa_id drop not null,
+  add constraint mesa_conteudo_dono_check check ((tipo = 'mundo' and dono_id is not null) or mundo_id is not null or mesa_id is not null);
+create index on public.mesa_conteudo (mundo_id, tipo);
+create index on public.mesa_conteudo (dono_id) where tipo = 'mundo';
+create unique index mesa_conteudo_descoberta_unica on public.mesa_conteudo (mesa_id, lugar_id) where tipo = 'descoberta';
+
+-- mundos_2_mesa_usa_mundo
+alter table public.mesas add column mundo_id uuid references public.mesa_conteudo(id) on delete set null;
+
+-- mundos_3_regras_de_acesso
+create function privado.eh_dono_mundo(w uuid) returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.mesa_conteudo where id = w and tipo = 'mundo' and dono_id = (select auth.uid()))
+$$;
+create function privado.eh_dono_mundo_txt(w text) returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.mesa_conteudo where id::text = w and tipo = 'mundo' and dono_id = (select auth.uid()))
+$$;
+create function privado.pode_mexer(t text, mesa uuid, mundo uuid, dono uuid) returns boolean language sql stable security definer set search_path = '' as $$
+  select case
+    when t = 'mundo' then dono = (select auth.uid()) and mundo is null
+    when mundo is not null then privado.eh_dono_mundo(mundo)
+    else mesa is not null and privado.eh_mestre(mesa) end
+$$;
+alter policy "mesa_conteudo: só o mestre" on public.mesa_conteudo
+  using (privado.pode_mexer(tipo, mesa_id, mundo_id, dono_id)) with check (privado.pode_mexer(tipo, mesa_id, mundo_id, dono_id));
+alter policy "mesa_conteudo: só o mestre" on public.mesa_conteudo rename to "mesa_conteudo: dono do mundo ou mestre da mesa";
+-- a mesa só usa mundo do próprio mestre
+create function privado.mesa_usa_mundo_seu() returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if new.mundo_id is not null and (tg_op = 'INSERT' or new.mundo_id is distinct from old.mundo_id) and not privado.eh_dono_mundo(new.mundo_id) then
+    raise exception 'Este mundo não é seu';
+  end if;
+  return new;
+end $$;
+create trigger mesas_mundo_do_mestre before insert or update of mundo_id on public.mesas for each row execute function privado.mesa_usa_mundo_seu();
+
+-- mundos_4_o_que_o_jogador_ve: o mundo da mesa, com o estado de cada lugar NESTA mesa (sem descoberta = oculto)
+create or replace function public.mundo_jogador(p_mesa uuid) returns jsonb language sql stable security definer set search_path = '' as $$
+  with w as (select mundo_id as id from public.mesas where id = p_mesa and privado.esta_na_mesa(p_mesa)),
+  est as (
+    select p.*, coalesce(d.estado, 'oculto') as est
+    from public.mesa_conteudo p
+    left join public.mesa_conteudo d on d.tipo = 'descoberta' and d.mesa_id = p_mesa and d.lugar_id = p.id
+    where p.tipo = 'pagina' and p.mundo_id = (select id from w)),
+  nomes as (select coalesce(array_agg(lower(trim(nome))), '{}') as n from est where est <> 'oculto')
+  select case when not privado.esta_na_mesa(p_mesa) then null else jsonb_build_object(
+    'mundo', (select jsonb_build_object('id', m.id, 'nome', m.nome) from public.mesa_conteudo m where m.id = (select id from w)),
+    'paginas', coalesce((select jsonb_agg(jsonb_build_object(
+        'id', e.id, 'tipo', e.categoria, 'nome', e.nome, 'estado', e.est,
+        'texto', case when e.est = 'visitado' then privado.mascarar_links(e.texto, (select n from nomes)) else '' end,
+        'mapa_id', e.mapa_id, 'x', e.x, 'y', e.y, 'na_cena', false, 'atualizado_em', e.atualizado_em) order by e.nome)
+      from est e where e.est <> 'oculto'), '[]'),
+    'mapas', coalesce((select jsonb_agg(jsonb_build_object(
+        'id', m.id, 'nome', m.nome, 'imagem', m.imagem, 'largura', m.largura, 'altura', m.altura, 'lugar_id', m.lugar_id,
+        'desenho', m.dados -> 'desenho') order by m.criado_em)
+      from public.mesa_conteudo m where m.tipo = 'mapa' and m.mundo_id = (select id from w)
+        and (m.lugar_id is null or exists (select 1 from est e where e.id = m.lugar_id and e.est = 'visitado'))), '[]')
+  ) end
+$$;
+create or replace function privado.mapa_visivel(c text) returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (
+      select 1 from public.mesa_conteudo m join public.mesas s on s.mundo_id = m.mundo_id
+      where m.tipo = 'mapa' and m.imagem = c and privado.esta_na_mesa(s.id)
+        and (m.lugar_id is null or exists (select 1 from public.mesa_conteudo d where d.tipo = 'descoberta' and d.mesa_id = s.id and d.lugar_id = m.lugar_id and d.estado = 'visitado')))
+      or exists (select 1 from public.mesas s where s.imagem_atual = c and privado.esta_na_mesa(s.id))
+$$;
+
+-- mundos_5_arquivos_dos_mundos (pasta mundos/<mundo_id>/)
+create policy "mundos: dono e mesa revelada veem" on storage.objects for select to authenticated
+  using (bucket_id = 'mesas' and (storage.foldername(name))[1] = 'mundos' and (privado.eh_dono_mundo_txt((storage.foldername(name))[2]) or privado.mapa_visivel(name)));
+create policy "mundos: dono envia" on storage.objects for insert to authenticated
+  with check (bucket_id = 'mesas' and (storage.foldername(name))[1] = 'mundos' and privado.eh_dono_mundo_txt((storage.foldername(name))[2]));
+create policy "mundos: dono muda" on storage.objects for update to authenticated
+  using (bucket_id = 'mesas' and (storage.foldername(name))[1] = 'mundos' and privado.eh_dono_mundo_txt((storage.foldername(name))[2]))
+  with check (bucket_id = 'mesas' and (storage.foldername(name))[1] = 'mundos' and privado.eh_dono_mundo_txt((storage.foldername(name))[2]));
+create policy "mundos: dono apaga" on storage.objects for delete to authenticated
+  using (bucket_id = 'mesas' and (storage.foldername(name))[1] = 'mundos' and privado.eh_dono_mundo_txt((storage.foldername(name))[2]));
+
+-- mundos_6_limpa_regras_antigas_storage: some a pasta antiga <mesa>/mundo/
+drop policy "mesas: mapas do mundo revelados" on storage.objects;
+drop policy "mesas: mestre envia" on storage.objects;
+drop policy "mesas: mestre muda" on storage.objects;
+create policy "mesas: mestre envia" on storage.objects for insert to authenticated
+  with check (bucket_id = 'mesas' and privado.eh_mestre_txt((storage.foldername(name))[1]) and (storage.foldername(name))[2] = any (array['mapas','mestre','jogadores']));
+create policy "mesas: mestre muda" on storage.objects for update to authenticated
+  using (bucket_id = 'mesas' and privado.eh_mestre_txt((storage.foldername(name))[1]))
+  with check (bucket_id = 'mesas' and privado.eh_mestre_txt((storage.foldername(name))[1]) and (storage.foldername(name))[2] = any (array['mapas','mestre','jogadores']));
