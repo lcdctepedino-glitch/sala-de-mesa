@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b0b0d">
+<link rel="icon" href="data:,">
+<title>Meus mundos · Sala de Mesa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,600;1,600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<link rel="stylesheet" href="js/base.css">
+<style>
+/* Criador de mundos: opção 3 (Passo a passo) aprovada em 03/11/2026, com botão para a opção 2 (Tela livre) e de volta.
+   O visual definitivo vem depois; aqui vale o funcionamento. Os mapas são pergaminho e tinta. */
+:root{--perg:#e6d8b5;--tinta:#3a2e20;--brasa:#8a3a26}
+/* ---------- Meus mundos (lista) ---------- */
+.mcard{display:grid;grid-template-columns:128px minmax(0,1fr);gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.mcard canvas{width:128px;height:86px;border-radius:8px;background:#a3b9b4;display:block}
+.mcard b{font:600 18px/1.2 var(--f-disp);display:block;overflow-wrap:anywhere}
+.mcard small{color:var(--mute);font-size:13px;display:block}
+.mcard .acoes{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.radios{display:grid;gap:8px}
+.ck{display:flex;gap:9px;align-items:center;font-size:15px;padding:2px 0}
+.ck input{width:18px;height:18px;accent-color:var(--perg);flex:none;padding:0;margin:0}
+/* ---------- editor ---------- */
+body.editando{overflow:hidden}
+#ed{position:fixed;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr)}
+:where(#ed) :is(button,input,select){font:inherit;color:inherit}
+:where(#ed) button{cursor:pointer}
+#ed :focus-visible{outline:2px solid var(--perg);outline-offset:2px}
+.barra{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:max(8px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 8px max(12px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line)}
+.barra .nm{font:600 18px var(--f-disp);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1 1 120px}
+.barra .st{font-size:13px;color:var(--mute);white-space:nowrap}
+.barra .st.erro{color:var(--erro)}
+.barra .modo{flex:none}
+#app{position:relative;min-height:0;container-type:inline-size}
+.tela{position:relative;min-width:0;min-height:0;overflow:hidden;touch-action:none;background:#101114}
+.tela canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.ferr{display:grid;justify-items:center;align-content:center;gap:3px;padding:8px 4px;border-radius:11px;border:1px solid transparent;background:none;color:var(--mute);font-weight:700;font-size:12px;line-height:1.1}
+.ferr svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.ferr:hover{color:var(--ink)}
+.ferr[aria-pressed="true"]{background:var(--perg);color:var(--tinta)}
+.mbt{white-space:nowrap;border:1px solid var(--borda);background:none;border-radius:10px;padding:7px 12px;font-weight:700;font-size:14px;color:var(--ink);display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.mbt svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mbt.forte{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.mbt.conf{background:var(--brasa);border-color:var(--brasa);color:var(--ink)}
+.mbt:disabled{opacity:.4;cursor:default}
+.h4{margin:0 0 8px;font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--mute);font-weight:700}
+.dica{color:var(--mute);font-size:14px;margin:0}
+.sw{display:flex;flex-wrap:wrap;gap:6px}
+.sw button{display:flex;align-items:center;gap:7px;border:1px solid var(--borda);background:var(--campo);border-radius:999px;padding:5px 11px 5px 6px;font-size:13px;font-weight:700}
+.sw i{width:18px;height:18px;border-radius:50%;border:1px solid rgba(0,0,0,.35);display:block}
+.sw button[aria-pressed="true"]{border-color:var(--perg);box-shadow:0 0 0 1px var(--perg)}
+.tams{display:flex;gap:6px;align-items:center}
+.tams button{width:34px;height:34px;border-radius:50%;border:1px solid var(--borda);background:var(--campo);display:grid;place-items:center;padding:0}
+.tams button i{display:block;border-radius:50%;background:var(--ink)}
+.tams button[aria-pressed="true"]{border-color:var(--perg);box-shadow:0 0 0 1px var(--perg)}
+.cp{display:grid;gap:4px}
+.cp span{font-size:13px;color:var(--mute)}
+.cp input{width:100%;background:var(--campo);border:1px solid var(--borda);border-radius:10px;padding:9px 11px;font-size:15px}
+.seg{display:flex;border:1px solid var(--borda);border-radius:10px;overflow:hidden}
+.seg button{flex:1;border:0;background:none;padding:7px 10px;font-weight:700;font-size:13px;color:var(--mute);white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--perg);color:var(--tinta)}
+.trilha{display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap}
+.trilha button{border:0;background:none;color:var(--mute);font:600 16px var(--f-disp);padding:2px 4px;text-overflow:ellipsis;overflow:hidden}
+.trilha b{font:600 17px var(--f-disp);overflow:hidden;text-overflow:ellipsis}
+.trilha em{color:var(--borda);font-style:normal}
+.mini{display:block;width:100%;height:auto;border-radius:8px;background:#a3b9b4;aspect-ratio:3/2}
+.troca{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mute)}
+.troca input{width:20px;height:20px;accent-color:var(--perg);padding:0}
+/* Tela livre */
+.p2{position:absolute;inset:0}
+.p2>.tela{position:absolute;inset:0}
+.flut{position:absolute;background:rgba(23,24,28,.93);border:1px solid var(--borda);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);z-index:2}
+.p2 .chips{left:14px;top:14px;border-radius:999px;padding:5px 12px;max-width:calc(100% - 150px)}
+.p2 .desf{right:14px;top:14px;border-radius:999px;padding:4px;display:flex;gap:2px}
+.p2 .desf button{border:0;background:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;padding:0}
+.p2 .desf button[aria-pressed="true"]{background:var(--perg);color:var(--tinta)}
+.p2 .desf svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.p2 .dock{left:50%;bottom:16px;transform:translateX(-50%);border-radius:999px;padding:7px;display:flex;gap:4px}
+.p2 .dock .ferr{width:64px;height:64px;border-radius:50%;padding:0;font-size:11px}
+.p2 .bandeja{left:50%;bottom:98px;transform:translateX(-50%);border-radius:16px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;justify-content:center;width:max-content;max-width:calc(100% - 28px)}
+.p2 .bandeja .dica{max-width:46ch;text-align:center}
+.p2 .cartao{right:14px;top:70px;width:300px;max-height:calc(100% - 190px);overflow:auto;border-radius:16px;padding:14px;display:grid;gap:10px}
+.p2 .cartao h3{margin:0;font:600 19px var(--f-disp)}
+@container (max-width:700px){
+  .p2 .cartao{left:12px;right:12px;width:auto;top:66px}
+  .p2 .dock .ferr{width:52px;height:52px;font-size:10px}
+  .p2 .bandeja{bottom:84px}
+}
+/* Passo a passo */
+.p3{position:absolute;inset:0;display:grid;grid-template-columns:260px minmax(0,1fr)}
+.p3 .esq{border-right:1px solid var(--line);overflow:auto;padding:16px;display:grid;align-content:start;gap:14px}
+.p3 .passos{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.p3 .passo{width:100%;display:grid;grid-template-columns:30px minmax(0,1fr);gap:10px;align-items:start;padding:9px 10px;border-radius:12px;background:none;border:1px solid transparent;text-align:left;color:var(--mute)}
+.p3 .passo .n{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--borda);display:grid;place-items:center;font-weight:700;font-size:14px}
+.p3 .passo b{display:block;color:var(--ink);font-size:15px}
+.p3 .passo small{font-size:13px}
+.p3 .passo[aria-current="step"]{background:var(--card);border-color:var(--borda)}
+.p3 .passo[aria-current="step"] .n{background:var(--perg);color:var(--tinta);border-color:var(--perg)}
+.p3 .passo.feito .n{border-color:var(--perg);color:var(--perg)}
+.p3 .meio{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-width:0;min-height:0}
+.p3 .faixa{padding:12px 16px;border-bottom:1px solid var(--line);display:grid;gap:10px;min-width:0;max-height:46vh;overflow:auto}
+.p3 .faixa h2{margin:0;font:600 22px/1.2 var(--f-disp)}
+.p3 .linha{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.p3 .linha .ferr{display:flex;gap:6px;padding:7px 11px;border:1px solid var(--borda);font-size:13px}
+.p3 .linha .ferr svg{width:18px;height:18px}
+.p3 .cands{display:grid;grid-template-columns:repeat(3,minmax(0,140px));gap:8px}
+.p3 .cands button{border:2px solid transparent;border-radius:10px;padding:0;background:none}
+.p3 .cands button:hover{border-color:var(--perg)}
+.p3 .rodape{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 16px max(10px,env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+.p3 .pronto{background:var(--card);border-radius:14px;padding:14px;display:grid;gap:8px}
+@container (max-width:780px){
+  .p3{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr)}
+  .p3 .esq{border-right:0;border-bottom:1px solid var(--line);padding:6px 10px}
+  .p3 .passos{display:flex;overflow-x:auto}
+  .p3 .passo{grid-template-columns:auto;min-width:max-content;padding:6px 8px}
+  .p3 .passo small{display:none}
+  .p3 .faixa{padding:10px 12px;max-height:40vh}
+  .p3 .faixa h2{font-size:19px}
+  .p3 .cands{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .p3 .rodape{padding-left:12px;padding-right:12px}
+  .p3 .rodape .desf span{display:none}
+}
+</style>
+</head>
+<body>
+<!-- ======== Meus mundos ======== -->
+<main class="pag" id="lib" hidden>
+  <a class="lnk" href="index.html">‹ Início</a>
+  <div style="display:grid;gap:6px"><h1>Meus mundos</h1><p class="mute">Os mundos são seus. Cada um pode valer para várias mesas, e cada mesa guarda o que os jogadores já descobriram.</p></div>
+  <p class="msg erro" id="lib-erro" hidden></p>
+  <section><div id="l-mundos"></div></section>
+  <section>
+    <h2>Criar um mundo</h2>
+    <form class="caixa" id="f-novo" novalidate>
+      <label class="campo"><span>Nome do mundo</span><input id="in-nome" maxlength="60" placeholder="Ex.: Reino de Aster" autocomplete="off"></label>
+      <div class="radios" role="radiogroup" aria-label="Como começar">
+        <label class="ck"><input type="radio" name="comeco" value="pronto" checked> Começar com um continente pronto para ajustar</label>
+        <label class="ck"><input type="radio" name="comeco" value="mar"> Começar só com mar e desenhar do zero</label>
+        <label class="ck"><input type="radio" name="comeco" value="imagem"> Enviar uma imagem de mapa que eu já tenho</label>
+      </div>
+      <label class="campo" id="c-img" hidden><span>Imagem do mapa (JPG ou PNG)</span><input type="file" id="in-img" accept="image/png,image/jpeg,image/webp"></label>
+      <p class="msg" id="novo-msg" role="status"></p>
+      <button class="bt" type="submit" id="bt-novo">Criar e abrir</button>
+    </form>
+  </section>
+</main>
+
+<!-- ======== Editor ======== -->
+<div id="ed" hidden>
+  <header class="barra">
+    <a class="mbt" href="mundos.html" id="bt-voltar">‹ Mundos</a>
+    <span class="nm" id="nm"></span>
+    <span class="st" id="st" role="status"></span>
+    <div class="seg modo" role="group" aria-label="Jeito de editar"><button type="button" data-modo="passos">Passo a passo</button><button type="button" data-modo="livre">Tela livre</button></div>
+  </header>
+  <div id="app"></div>
+  <input type="file" id="arq" accept="image/png,image/jpeg,image/webp" hidden>
+</div>
+
+<script src="js/supabase.js"></script>
+<script src="js/comum.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+const WID = smParam("w");
+let EU = null, M = null, MESAS = [];
+
+/* =================== dados e desenho (motor do protótipo aprovado) =================== */
+const C = 10, CP = 20, LARG = 1200, LARGP = 800;   // célula do mundo, quadrado da planta, largura do mapa/planta quando é imagem
+const TER = [{ n: "Mar", c: "#a3b9b4" }, { n: "Campo", c: "#e6d8b5" }, { n: "Floresta", c: "#bcc597" }, { n: "Montanha", c: "#d3bf99" }, { n: "Deserto", c: "#efdca6" }];
+const TINTA = "#3a2e20", PISO = "#f7f0de", HALO = "rgba(236,224,192,.96)";
+const RAIOS = [1, 2, 3, 5, 8];
+const uid = () => crypto.randomUUID();
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const ent = v => Math.min(1, Math.max(0, v));
+
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296 } }
+function ruido(seed, w, h, e) {
+  const r = rng(seed), gw = Math.ceil(w / e) + 2, gh = Math.ceil(h / e) + 2, g = new Float32Array(gw * gh).map(() => r());
+  const s = t => t * t * (3 - 2 * t);
+  return (x, y) => { const fx = x / e, fy = y / e, ix = Math.floor(fx), iy = Math.floor(fy), u = s(fx - ix), v = s(fy - iy), a = g[iy * gw + ix], b = g[iy * gw + ix + 1], c = g[(iy + 1) * gw + ix], d = g[(iy + 1) * gw + ix + 1]; return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v };
+}
+function gerar(cel, w, h, seed) {
+  const o = [ruido(seed, w, h, 26), ruido(seed + 1, w, h, 13), ruido(seed + 2, w, h, 6), ruido(seed + 3, w, h, 3)];
+  const fl = ruido(seed + 9, w, h, 9), de = ruido(seed + 17, w, h, 15);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let v = o[0](x, y) * .5 + o[1](x, y) * .27 + o[2](x, y) * .15 + o[3](x, y) * .08;
+    const dx = (x - w / 2) / (w * .5), dy = (y - h / 2) / (h * .5); v = v - (dx * dx + dy * dy) * .55 + .17;
+    let t = 0; if (v > .5) { t = 1; if (v > .69) t = 3; else if (fl(x, y) > .57) t = 2; else if (de(x, y) > .63 && v < .6) t = 4 }
+    cel[y * w + x] = t;
+  }
+}
+function b64(a) { let s = ""; for (let i = 0; i < a.length; i += 8192) s += String.fromCharCode.apply(null, a.subarray(i, i + 8192)); return btoa(s) }
+function deB64(s, n) { const a = new Uint8Array(n); try { const b = atob(s || ""); for (let i = 0; i < Math.min(n, b.length); i++) a[i] = b.charCodeAt(i) } catch (e) { } return a }
+function novoMapa(seed, gerado) { const w = 120, h = 80, cel = new Uint8Array(w * h); if (gerado) gerar(cel, w, h, seed); return { w, h, cel } }
+function novaPlanta() { const w = 40, h = 28; return { id: uid(), fonte: "desenho", w, h, piso: new Uint8Array(w * h), portas: new Set(), rotulos: [], imagem: null, largura: null, altura: null, imgEl: null } }
+const dimsMundo = X => X.fonte === "imagem" && X.largura ? [LARG, LARG * X.altura / X.largura] : [X.mapa.w * C, X.mapa.h * C];
+const dimsPlanta = P => P.fonte === "imagem" && P.largura ? [LARGP, LARGP * P.altura / P.largura] : [P.w * CP, P.h * CP];
+
+/* imagem do Storage (guardada no aparelho pelo smImagem) */
+function carregaImg(o) {
+  if (!o.imagem || (o.imgEl && o.imgDe === o.imagem) || o.pedindo === o.imagem) return;
+  const c = o.pedindo = o.imagem;
+  smImagem(c).then(url => { const im = new Image(); im.onload = () => { if (o.imagem === c) { o.imgEl = im; o.imgDe = c; redesenhar() } }; im.src = url })
+    .catch(() => { o.pedindo = null; o.imgErro = c; redesenhar() });
+}
+function redesenhar() { if (S.ed) S.ed.pedir(); document.querySelectorAll("canvas[data-mini]").forEach(cv => { const X = LIB[cv.dataset.mini]; if (X) desenhaMini(cv, X) }) }
+
+/* --------- pintar --------- */
+function pintaMundo(X, p0, p1, r, t) {
+  const { w, h, cel } = X.mapa, d = Math.hypot(p1.x - p0.x, p1.y - p0.y), n = Math.max(1, Math.ceil(d / (C * .5)));
+  for (let i = 0; i <= n; i++) {
+    const cx = (p0.x + (p1.x - p0.x) * i / n) / C, cy = (p0.y + (p1.y - p0.y) * i / n) / C;
+    for (let y = Math.floor(cy - r); y <= Math.ceil(cy + r); y++) for (let x = Math.floor(cx - r); x <= Math.ceil(cx + r); x++) {
+      if (x < 0 || y < 0 || x >= w || y >= h) continue;
+      if ((x + .5 - cx) ** 2 + (y + .5 - cy) ** 2 <= r * r + .3) cel[y * w + x] = t;
+    }
+  }
+}
+const celP = (P, p) => [Math.min(P.w - 1, Math.max(0, Math.floor(p.x / CP))), Math.min(P.h - 1, Math.max(0, Math.floor(p.y / CP)))];
+function pintaPiso(P, p0, p1, v) {
+  const d = Math.hypot(p1.x - p0.x, p1.y - p0.y), n = Math.max(1, Math.ceil(d / (CP * .4)));
+  for (let i = 0; i <= n; i++) { const [x, y] = celP(P, { x: p0.x + (p1.x - p0.x) * i / n, y: p0.y + (p1.y - p0.y) * i / n }); P.piso[y * P.w + x] = v }
+}
+function encheSala(P, a, b) { for (let y = Math.min(a[1], b[1]); y <= Math.max(a[1], b[1]); y++) for (let x = Math.min(a[0], b[0]); x <= Math.max(a[0], b[0]); x++) P.piso[y * P.w + x] = 1 }
+function trocaPorta(P, p) {
+  const x = p.x / CP, y = p.y / CP, cx = Math.floor(x), cy = Math.floor(y), fx = x - cx, fy = y - cy;
+  const op = [[fy, `${cx},${cy},h`], [1 - fy, `${cx},${cy + 1},h`], [fx, `${cx},${cy},v`], [1 - fx, `${cx + 1},${cy},v`]].sort((a, b) => a[0] - b[0])[0][1];
+  if (P.portas.has(op)) P.portas.delete(op); else P.portas.add(op);
+}
+function trocaNumero(P, p) {
+  const [x, y] = celP(P, p), i = P.rotulos.findIndex(r => r.x === x && r.y === y);
+  if (i >= 0) { P.rotulos.splice(i, 1); return }
+  if (!P.piso[y * P.w + x]) return;
+  P.rotulos.push({ x, y, n: P.rotulos.reduce((m, r) => Math.max(m, r.n), 0) + 1 });
+}
+function lugarEm(X, p, z) { const r = 14 / z; let mel = null, md = r * r; for (const l of X.lugares) { const d = (l.x - p.x) ** 2 + (l.y - p.y) ** 2; if (d < md) { md = d; mel = l } } return mel }
+
+function hsh(x, y) { let h = x * 374761393 + y * 668265263; h = Math.imul(h ^ (h >>> 13), 1274126177); return (h ^ (h >>> 16)) >>> 0 }
+function aviso(c, W, H, z, txt) { c.fillStyle = "#2a2c31"; c.fillRect(0, 0, W, H); c.fillStyle = "#a9a69d"; c.font = `700 ${15 / z}px "Atkinson Hyperlegible", sans-serif`; c.textAlign = "center"; c.textBaseline = "middle"; c.fillText(txt, W / 2, H / 2) }
+function desenhaMundo(c, X, z, o = {}) {
+  const [W, H] = dimsMundo(X), s = 1 / z;
+  if (X.fonte === "imagem") {
+    if (X.imgEl && X.imgDe === X.imagem) c.drawImage(X.imgEl, 0, 0, W, H);
+    else aviso(c, W, H, z, X.imgErro === X.imagem ? "Não consegui abrir a imagem" : "Carregando a imagem…");
+  } else {
+    const { w, h, cel } = X.mapa;
+    c.fillStyle = TER[0].c; c.fillRect(0, 0, W, H);
+    if (!o.mini) {
+      c.strokeStyle = "rgba(58,46,32,.2)"; c.lineWidth = .8; c.beginPath();
+      for (let y = 3; y < h - 3; y += 2) for (let x = 3; x < w - 3; x += 2) {
+        if (cel[y * w + x] || hsh(x, y) % 13) continue;
+        if (cel[y * w + x - 2] || cel[y * w + x + 3] || cel[(y - 2) * w + x] || cel[(y + 2) * w + x]) continue;
+        const px = x * C, py = y * C + 4; c.moveTo(px, py); c.quadraticCurveTo(px + 4, py - 4, px + 8, py); c.quadraticCurveTo(px + 12, py + 4, px + 16, py);
+      }
+      c.stroke();
+    }
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const t = cel[y * w + x]; if (t) { c.fillStyle = TER[t].c; c.fillRect(x * C, y * C, C + .4, C + .4) } }
+    const cst = new Path2D(), sea = (x, y) => x < 0 || y < 0 || x >= w || y >= h || !cel[y * w + x];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (cel[y * w + x]) {
+      const X0 = x * C, Y0 = y * C;
+      if (sea(x, y - 1)) { cst.moveTo(X0, Y0); cst.lineTo(X0 + C, Y0) }
+      if (sea(x, y + 1)) { cst.moveTo(X0, Y0 + C); cst.lineTo(X0 + C, Y0 + C) }
+      if (sea(x - 1, y)) { cst.moveTo(X0, Y0); cst.lineTo(X0, Y0 + C) }
+      if (sea(x + 1, y)) { cst.moveTo(X0 + C, Y0); cst.lineTo(X0 + C, Y0 + C) }
+    }
+    c.lineCap = "round"; c.strokeStyle = "rgba(58,46,32,.16)"; c.lineWidth = o.mini ? 6 : 5; c.stroke(cst);
+    c.strokeStyle = TINTA; c.lineWidth = o.mini ? 2 : 1.3; c.stroke(cst);
+    if (!o.mini) {
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const t = cel[y * w + x], k = hsh(x, y); if (t < 2) continue;
+        const cx = x * C + C / 2 + (k % 5 - 2) * .6, cy = y * C + C / 2 + ((k >> 3) % 5 - 2) * .6;
+        if (t === 2 && k % 3 === 0) { c.fillStyle = "#97a675"; c.strokeStyle = TINTA; c.lineWidth = .7; c.beginPath(); c.arc(cx, cy - 1, 3.3, 0, 7); c.fill(); c.stroke(); c.beginPath(); c.moveTo(cx, cy + 2.2); c.lineTo(cx, cy + 4.5); c.stroke() }
+        else if (t === 3 && k % 2 === 0) { c.fillStyle = "rgba(58,46,32,.2)"; c.beginPath(); c.moveTo(cx, cy - 5); c.lineTo(cx + 6, cy + 3.5); c.lineTo(cx + 1, cy + 3.5); c.fill(); c.strokeStyle = TINTA; c.lineWidth = 1; c.beginPath(); c.moveTo(cx - 6, cy + 3.5); c.lineTo(cx, cy - 5); c.lineTo(cx + 6, cy + 3.5); c.stroke() }
+        else if (t === 4 && k % 4 === 0) { c.fillStyle = "rgba(58,46,32,.45)"; c.fillRect(cx - 2, cy, 1.1, 1.1); c.fillRect(cx + 1.5, cy + 2, 1.1, 1.1) }
+      }
+    }
+  }
+  c.strokeStyle = TINTA; c.lineWidth = o.mini ? 4 : 2 * Math.max(1, s * .6); c.strokeRect(0, 0, W, H);
+  // lugares: tamanho fixo na tela; o rótulo procura um lado livre, sempre com halo
+  const ocup = X.lugares.map(l => [l.x - 9 * s, l.y - 9 * s, l.x + 9 * s, l.y + 9 * s]);
+  const bate = q => ocup.some(o => q[0] < o[2] && q[2] > o[0] && q[1] < o[3] && q[3] > o[1]);
+  for (const l of X.lugares) {
+    const r = o.mini ? 9 * W / 1200 : 6 * s, sel = o.sel === l.id;
+    if (sel) { c.strokeStyle = "#8a3a26"; c.lineWidth = 2.4 * s; c.beginPath(); c.arc(l.x, l.y, r + 6 * s, 0, 7); c.stroke() }
+    if (l.tipo === "masmorra") { c.fillStyle = TINTA; c.fillRect(l.x - r, l.y - r, r * 2, r * 2); c.fillStyle = PISO; c.fillRect(l.x - r * .45, l.y - r * .2, r * .9, r * 1.2) }
+    else { c.fillStyle = PISO; c.strokeStyle = TINTA; c.lineWidth = o.mini ? 3 : 2 * s; c.beginPath(); c.arc(l.x, l.y, r, 0, 7); c.fill(); c.stroke(); c.fillStyle = TINTA; c.beginPath(); c.arc(l.x, l.y, r * .42, 0, 7); c.fill() }
+  }
+  if (!o.mini) for (const l of X.lugares) {
+    const r = 6 * s, temP = !!X.plantas[l.id], fs = 14 * s, nome = l.nome || "Sem nome";
+    c.font = `italic 600 ${fs}px Spectral, Georgia, serif`;
+    const tw = c.measureText(nome).width, alt = fs * 1.15 + (temP ? 13 * s : 0), g = 4 * s;
+    const lados = [[l.x - tw / 2, l.y + r + g], [l.x - tw / 2, l.y - r - g - alt], [l.x + r + g * 1.5, l.y - fs * .6], [l.x - r - g * 1.5 - tw, l.y - fs * .6]];
+    let [x0, y0] = lados[0];
+    for (const [a, b] of lados) { const q = [a - 2 * s, b, a + tw + 2 * s, b + alt]; if (!bate(q)) { [x0, y0] = [a, b]; break } }
+    ocup.push([x0 - 2 * s, y0, x0 + tw + 2 * s, y0 + alt]);
+    c.textAlign = "left"; c.textBaseline = "top"; c.lineJoin = "round"; c.lineWidth = 4.5 * s; c.strokeStyle = HALO;
+    c.strokeText(nome, x0, y0); c.fillStyle = TINTA; c.fillText(nome, x0, y0);
+    if (temP) { c.font = `700 ${10 * s}px "Atkinson Hyperlegible", sans-serif`; c.lineWidth = 3.5 * s; c.strokeStyle = HALO; c.strokeText("planta", x0, y0 + fs * 1.15); c.fillStyle = "#6b5a42"; c.fillText("planta", x0, y0 + fs * 1.15) }
+  }
+}
+let PADRAO = null;
+function hachura(c) {
+  if (!PADRAO) {
+    const k = document.createElement("canvas"); k.width = k.height = 14; const g = k.getContext("2d");
+    g.strokeStyle = "rgba(58,46,32,.42)"; g.lineWidth = 1; g.beginPath();
+    for (const o of [-14, 0, 14]) { g.moveTo(o, 14); g.lineTo(o + 14, 0) } g.stroke(); PADRAO = k;
+  }
+  return c.createPattern(PADRAO, "repeat");
+}
+function desenhaPlanta(c, P, z) {
+  if (P.fonte === "imagem") {
+    const [W, H] = dimsPlanta(P);
+    if (P.imgEl && P.imgDe === P.imagem) c.drawImage(P.imgEl, 0, 0, W, H); else aviso(c, W, H, z, P.imgErro === P.imagem ? "Não consegui abrir a imagem" : "Carregando a imagem…");
+    c.strokeStyle = TINTA; c.lineWidth = 2; c.strokeRect(0, 0, W, H); return;
+  }
+  const { w, h, piso } = P, f = (x, y) => x >= 0 && y >= 0 && x < w && y < h && piso[y * w + x];
+  c.fillStyle = "#e3d4b0"; c.fillRect(0, 0, w * CP, h * CP); c.fillStyle = hachura(c); c.fillRect(0, 0, w * CP, h * CP);
+  c.fillStyle = PISO; for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (piso[y * w + x]) c.fillRect(x * CP - .3, y * CP - .3, CP + .6, CP + .6);
+  const g = new Path2D(), pa = new Path2D();
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (piso[y * w + x]) {
+    const X0 = x * CP, Y0 = y * CP; g.rect(X0, Y0, CP, CP);
+    if (!f(x, y - 1)) { pa.moveTo(X0, Y0); pa.lineTo(X0 + CP, Y0) }
+    if (!f(x, y + 1)) { pa.moveTo(X0, Y0 + CP); pa.lineTo(X0 + CP, Y0 + CP) }
+    if (!f(x - 1, y)) { pa.moveTo(X0, Y0); pa.lineTo(X0, Y0 + CP) }
+    if (!f(x + 1, y)) { pa.moveTo(X0 + CP, Y0); pa.lineTo(X0 + CP, Y0 + CP) }
+  }
+  c.strokeStyle = "rgba(58,46,32,.15)"; c.lineWidth = .8; c.stroke(g);
+  c.lineCap = "square"; c.strokeStyle = "rgba(58,46,32,.2)"; c.lineWidth = 8; c.stroke(pa);
+  c.strokeStyle = TINTA; c.lineWidth = 3.4; c.stroke(pa);
+  for (const k of P.portas) {
+    const [x, y, d] = k.split(","), X0 = +x * CP, Y0 = +y * CP;
+    c.fillStyle = PISO; c.strokeStyle = TINTA; c.lineWidth = 1.5;
+    if (d === "h") { c.fillRect(X0 + 4, Y0 - 3.5, CP - 8, 7); c.strokeRect(X0 + 4, Y0 - 3.5, CP - 8, 7) }
+    else { c.fillRect(X0 - 3.5, Y0 + 4, 7, CP - 8); c.strokeRect(X0 - 3.5, Y0 + 4, 7, CP - 8) }
+  }
+  c.textAlign = "center"; c.textBaseline = "middle";
+  for (const r of P.rotulos) {
+    const X0 = r.x * CP + CP / 2, Y0 = r.y * CP + CP / 2;
+    c.fillStyle = TINTA; c.beginPath(); c.arc(X0, Y0, 8, 0, 7); c.fill();
+    c.fillStyle = PISO; c.font = `700 11px "Atkinson Hyperlegible", sans-serif`; c.fillText(r.n, X0, Y0 + .5);
+  }
+  c.strokeStyle = TINTA; c.lineWidth = 2; c.strokeRect(0, 0, w * CP, h * CP);
+}
+function desenhaMini(cv, X) {
+  const [W, H] = dimsMundo(X), d = Math.min(devicePixelRatio || 1, 2);
+  const r = cv.getBoundingClientRect(), bw = Math.max(60, r.width || 240), bh = r.height || bw * H / W;
+  cv.width = Math.round(bw * d); cv.height = Math.round(bh * d);
+  const c = cv.getContext("2d"), z = Math.min(bw / W, bh / H);
+  c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = "#101114"; c.fillRect(0, 0, cv.width, cv.height);
+  c.setTransform(z * d, 0, 0, z * d, (bw - W * z) / 2 * d, (bh - H * z) / 2 * d); desenhaMundo(c, X, z, { mini: true });
+}
+
+/* =================== o mundo aberto: ler e gravar (tabela mesa_conteudo) =================== */
+const COLS = "id,tipo,nome,mundo_id,lugar_id,mapa_id,categoria,x,y,imagem,largura,altura,dados,criado_em";
+function montarMundo(w, rows) {
+  const meus = rows.filter(r => r.mundo_id === w.id).sort((a, b) => String(a.criado_em).localeCompare(String(b.criado_em)));
+  const g = meus.find(r => r.tipo === "mapa" && !r.lugar_id);
+  const d = (g && g.dados) || {}, de = d.desenho || {}, mw = de.w || 120, mh = de.h || 80;
+  const X = { id: w.id, nome: w.nome, mapaId: g ? g.id : uid(), fonte: d.fonte || (g && g.imagem && !de.cel ? "imagem" : "desenho"),
+    imagem: g && g.imagem || null, largura: g && g.largura || null, altura: g && g.altura || null, imgEl: null, seed: de.seed || null,
+    mapa: de.cel ? { w: mw, h: mh, cel: deB64(de.cel, mw * mh) } : novoMapa(1, false), lugares: [], plantas: {} };
+  if (X.fonte === "imagem" && !X.imagem) X.fonte = "desenho";
+  const [W, H] = dimsMundo(X);
+  meus.filter(r => r.tipo === "pagina" && g && r.mapa_id === g.id && r.x !== null && r.y !== null).forEach(r => {
+    const { icone, ...resto } = r.dados || {};
+    X.lugares.push({ id: r.id, nome: r.nome, tipo: icone === "masmorra" ? "masmorra" : "cidade", x: r.x * W, y: r.y * H, categoria: r.categoria, extra: resto });
+  });
+  meus.filter(r => r.tipo === "mapa" && r.lugar_id && X.lugares.some(l => l.id === r.lugar_id)).forEach(r => {
+    const dd = r.dados || {}, p = dd.desenho || {}, w2 = p.w || 40, h2 = p.h || 28;
+    X.plantas[r.lugar_id] = { id: r.id, fonte: dd.fonte === "imagem" && r.imagem ? "imagem" : "desenho", w: w2, h: h2, piso: p.piso ? deB64(p.piso, w2 * h2) : new Uint8Array(w2 * h2),
+      portas: new Set(p.portas || []), rotulos: p.rotulos || [], imagem: r.imagem, largura: r.largura, altura: r.altura, imgEl: null };
+  });
+  return X;
+}
+/* as linhas que o criador cuida; páginas e mapas criados em outras telas não entram e ficam como estão */
+function linhas() {
+  const [W, H] = dimsMundo(M), b = { id: null, tipo: null, nome: null, mundo_id: null, dono_id: null, lugar_id: null, mapa_id: null, categoria: null, x: null, y: null, imagem: null, largura: null, altura: null, dados: null };
+  const out = [{ ...b, id: M.id, tipo: "mundo", nome: M.nome.trim() || "Mundo sem nome", dono_id: EU.id }];
+  out.push({ ...b, id: M.mapaId, tipo: "mapa", nome: "Mapa do mundo", mundo_id: M.id, imagem: M.imagem, largura: M.largura, altura: M.altura,
+    dados: { fonte: M.fonte, desenho: { w: M.mapa.w, h: M.mapa.h, seed: M.seed, cel: b64(M.mapa.cel) } } });
+  for (const l of M.lugares) out.push({ ...b, id: l.id, tipo: "pagina", nome: l.nome.trim() || "Lugar sem nome", mundo_id: M.id, mapa_id: M.mapaId, categoria: l.categoria || "Lugar",
+    x: ent(l.x / W), y: ent(l.y / H), dados: { ...(l.extra || {}), icone: l.tipo } });
+  for (const [lid, P] of Object.entries(M.plantas)) {
+    const l = M.lugares.find(x => x.id === lid); if (!l) continue;
+    out.push({ ...b, id: P.id, tipo: "mapa", nome: "Planta de " + (l.nome.trim() || "lugar"), mundo_id: M.id, lugar_id: lid, imagem: P.imagem, largura: P.largura, altura: P.altura,
+      dados: { fonte: P.fonte, desenho: { w: P.w, h: P.h, piso: b64(P.piso), portas: [...P.portas], rotulos: P.rotulos } } });
+  }
+  return out;
+}
+const SALVO = new Map(); let LIXO = [], tSalvar = 0, salvando = null, deNovo = false;
+function status(t, ruim) { const e = $("#st"); e.textContent = t; e.className = "st" + (ruim ? " erro" : "") }
+function pendente() { if (!M) return false; const r = linhas(); return r.some(x => SALVO.get(x.id) !== JSON.stringify(x)) || [...SALVO.keys()].some(id => !r.some(x => x.id === id)) }
+function verSujo() { if (!M) return; clearTimeout(tSalvar); if (!salvando && pendente()) status("Salvando…"); tSalvar = setTimeout(salvar, 900) }
+async function salvar() {
+  clearTimeout(tSalvar); if (!M) return;
+  if (salvando) { deNovo = true; return salvando }
+  const rows = linhas(), ids = new Set(rows.map(r => r.id));
+  const mudou = rows.filter(r => SALVO.get(r.id) !== JSON.stringify(r)), sai = [...SALVO.keys()].filter(id => !ids.has(id));
+  if (!mudou.length && !sai.length) { if (!$("#st").classList.contains("erro")) status("Salvo"); return }
+  status("Salvando…");
+  salvando = (async () => {
+    try {
+      if (mudou.length) { const { error } = await sb.from("mesa_conteudo").upsert(mudou); if (error) throw error }
+      if (sai.length) { const { error } = await sb.from("mesa_conteudo").delete().in("id", sai); if (error) throw error }
+      mudou.forEach(r => SALVO.set(r.id, JSON.stringify(r))); sai.forEach(id => SALVO.delete(id));
+      if (LIXO.length) { const l = LIXO.splice(0); sb.storage.from("mesas").remove(l).catch(() => { }) }
+      status("Salvo");
+    } catch (x) { console.error(x); status("Não salvou. Tento de novo…", true); setTimeout(verSujo, 4000) }
+  })();
+  await salvando; salvando = null;
+  if (deNovo) { deNovo = false; verSujo() }
+}
+/* imagens que nenhuma linha usa mais (planta apagada, por exemplo): limpo ao abrir o mundo */
+async function limparSobras(rows) {
+  try {
+    const usadas = new Set(rows.map(r => r.imagem).filter(Boolean)), pasta = "mundos/" + M.id;
+    const sobra = (await smListar(pasta)).map(f => pasta + "/" + f.name).filter(c => !usadas.has(c));
+    if (sobra.length) await sb.storage.from("mesas").remove(sobra);
+  } catch (x) { }
+}
+let enviando = 0;
+async function enviarImagem(o, arq) {
+  if (!arq) return;
+  enviando++; status("Enviando a imagem…");
+  try {
+    const corpo = await smReduzir(arq, 3200, 1500 * 1024);
+    let bmp; try { bmp = await createImageBitmap(corpo) } catch (e) { throw new Error("formato") }
+    const caminho = "mundos/" + M.id + "/" + smNomeArquivo(arq.name, corpo !== arq ? "jpg" : null);
+    const { error } = await sb.storage.from("mesas").upload(caminho, corpo, { contentType: corpo.type || arq.type });
+    if (error) throw error;
+    const antes = o === M ? dimsMundo(M) : null;
+    if (o.imagem) LIXO.push(o.imagem);
+    Object.assign(o, { imagem: caminho, largura: bmp.width, altura: bmp.height, fonte: "imagem", imgEl: null, imgErro: null, pedindo: null });
+    if (o === M) { reescala(antes); HIST.delete(M) }
+    const im = new Image(); im.onload = () => { if (o.imagem === caminho) { o.imgEl = im; o.imgDe = caminho; redesenhar() } }; im.src = URL.createObjectURL(corpo);
+    if (S.ed) { S.ed.v = null; S.ed.ajustar() }
+    atualizar(); await salvar();
+  } catch (x) {
+    console.error(x);
+    status(x.message === "formato" ? "Não consegui ler essa imagem. Use JPG ou PNG." : /size|large/i.test(x.message) ? "Imagem grande demais (máximo 20 MB)." : "Não consegui enviar a imagem. Confira a internet e tente de novo.", true);
+  } finally { enviando-- }
+}
+function reescala([w0, h0]) { const [w1, h1] = dimsMundo(M); if (w0 === w1 && h0 === h1) return; M.lugares.forEach(l => { l.x *= w1 / w0; l.y *= h1 / h0 }) }
+function trocarFonte(o, f) {
+  if (o.fonte === f) return;
+  if (f === "imagem" && !o.imagem) { pedirImagem(o); return }
+  const antes = o === M ? dimsMundo(M) : null; o.fonte = f;
+  if (o === M) { reescala(antes); HIST.delete(M) }
+  if (f === "imagem") carregaImg(o); else if (o !== M) S.tool.planta = "sala";
+  if (S.ed) { S.ed.v = null; S.ed.ajustar() } atualizar();
+}
+let PARA = null;
+function pedirImagem(o) { PARA = o; $("#arq").value = ""; $("#arq").click() }
+$("#arq").onchange = e => { const f = e.target.files && e.target.files[0]; if (f && PARA) enviarImagem(PARA, f) };
+
+/* =================== estado da tela =================== */
+const S = {
+  modo: (() => { try { return localStorage.getItem("sm-mundos-modo") === "livre" ? "livre" : "passos" } catch (e) { return "passos" } })(),
+  alvo: { tipo: "mundo" }, tool: { mundo: "pincel", planta: "sala" }, terreno: 1, raio: 2, sel: null,
+  dedoMove: false, viuCaneta: false, passo: 1, cands: null, pronto: false, ajustes: false, ed: null,
+};
+const lugar = id => M.lugares.find(l => l.id === id);
+function alvo() {
+  if (S.alvo.tipo === "planta" && M.plantas[S.alvo.lugar]) return { tipo: "planta", obj: M.plantas[S.alvo.lugar], lugar: lugar(S.alvo.lugar) };
+  return { tipo: "mundo", obj: M };
+}
+
+/* --------- voltar e refazer (por mapa) --------- */
+const HIST = new WeakMap();
+function hist(o) { let h = HIST.get(o); if (!h) { h = { des: [], re: [] }; HIST.set(o, h) } return h }
+function foto(a) { return a.tipo === "mundo" ? { cel: a.obj.mapa.cel.slice(), lugares: a.obj.lugares.map(l => ({ ...l })), plantas: { ...a.obj.plantas } } : { piso: a.obj.piso.slice(), portas: new Set(a.obj.portas), rotulos: a.obj.rotulos.map(r => ({ ...r })) } }
+function aplica(a, f) { if (a.tipo === "mundo") { a.obj.mapa.cel.set(f.cel); a.obj.lugares = f.lugares; a.obj.plantas = { ...f.plantas } } else { a.obj.piso.set(f.piso); a.obj.portas = f.portas; a.obj.rotulos = f.rotulos } }
+function marcar(a) { const h = hist(a.obj); h.des.push(foto(a)); if (h.des.length > 80) h.des.shift(); h.re.length = 0 }
+function desfazer() { const a = alvo(), h = hist(a.obj); if (!h.des.length) return; h.re.push(foto(a)); aplica(a, h.des.pop()); if (S.sel && !lugar(S.sel)) S.sel = null; atualizar() }
+function refazer() { const a = alvo(), h = hist(a.obj); if (!h.re.length) return; h.des.push(foto(a)); aplica(a, h.re.pop()); atualizar() }
+
+/* =================== o editor (uma tela de desenho) =================== */
+class Editor {
+  constructor(host, o) {
+    this.host = host; this.o = o; this.cv = document.createElement("canvas"); host.append(this.cv);
+    this.c = this.cv.getContext("2d"); this.v = null; this.pts = new Map(); this.acao = null; this.hover = null; this.pinca = null;
+    this.ro = new ResizeObserver(() => this.tam()); this.ro.observe(host);
+    const cv = this.cv;
+    cv.addEventListener("pointerdown", e => this.down(e));
+    cv.addEventListener("pointermove", e => this.move(e));
+    cv.addEventListener("pointerup", e => this.up(e));
+    cv.addEventListener("pointercancel", e => this.up(e));
+    cv.addEventListener("pointerleave", () => { this.hover = null; this.pedir() });
+    cv.addEventListener("wheel", e => { e.preventDefault(); if (!this.v) return; const p = this.pt(e); this.zoom(this.v.z * Math.exp(-e.deltaY / 450), p.sx, p.sy) }, { passive: false });
+  }
+  fim() { this.ro.disconnect(); cancelAnimationFrame(this.raf) }
+  tam() {
+    const r = this.host.getBoundingClientRect(); if (!r.width || !r.height) return;
+    const mudou = Math.abs(r.width - (this.cw || 0)) > 1 || Math.abs(r.height - (this.ch || 0)) > 1;
+    this.cw = r.width; this.ch = r.height; this.d = Math.min(devicePixelRatio || 1, 2);
+    this.cv.width = Math.round(r.width * this.d); this.cv.height = Math.round(r.height * this.d);
+    if (!this.v || (mudou && this.v.auto)) this.ajustar(); else this.pedir();
+  }
+  dims() { const a = this.o.alvo(); return a.tipo === "mundo" ? dimsMundo(a.obj) : dimsPlanta(a.obj) }
+  ajustar() {
+    if (!this.cw) return; const [W, H] = this.dims(), z = Math.min(this.cw / W, this.ch / H) * .94;
+    this.v = { z, tx: (this.cw - W * z) / 2, ty: (this.ch - H * z) / 2, auto: true, zmin: z * .5, zmax: z * 9 }; this.pedir();
+  }
+  zoom(z, mx, my) { const v = this.v; z = Math.min(v.zmax, Math.max(v.zmin, z)); v.tx = mx - (mx - v.tx) * z / v.z; v.ty = my - (my - v.ty) * z / v.z; v.z = z; v.auto = false; this.pedir() }
+  pt(e) { const r = this.cv.getBoundingClientRect(), sx = (e.clientX - r.left) * this.cw / r.width, sy = (e.clientY - r.top) * this.ch / r.height; return { sx, sy, x: (sx - this.v.tx) / this.v.z, y: (sy - this.v.ty) / this.v.z } }
+  pedir() { if (!this.raf) this.raf = requestAnimationFrame(() => { this.raf = 0; this.desenhar() }) }
+  down(e) {
+    if (!this.v) return; this.cv.setPointerCapture(e.pointerId);
+    if (e.pointerType === "pen" && !S.viuCaneta) { S.viuCaneta = true; S.dedoMove = true; atualizar() }
+    this.pts.set(e.pointerId, this.pt(e));
+    if (this.pts.size === 2) {
+      this.fimAcao(); const [a, b] = [...this.pts.values()];
+      this.pinca = { d: Math.hypot(a.sx - b.sx, a.sy - b.sy) || 1, cx: (a.sx + b.sx) / 2, cy: (a.sy + b.sy) / 2, z: this.v.z, tx: this.v.tx, ty: this.v.ty }; return;
+    }
+    if (this.pts.size > 2) return;
+    const p = this.pt(e), a = this.o.alvo(), f = this.o.ferramenta(), agora = performance.now(), img = a.obj.fonte === "imagem";
+    const panear = e.button === 1 || f === "mao" || (e.pointerType === "touch" && S.dedoMove) || (img && f !== "lugar");
+    if (a.tipo === "mundo") {
+      const L = lugarEm(a.obj, p, this.v.z);
+      if (L && (f === "mao" || f === "lugar" || panear)) {
+        if (this.toque && this.toque.id === L.id && agora - this.toque.t < 380) { this.toque = null; this.o.duplo(L.id); return }
+        this.toque = { id: L.id, t: agora }; this.o.escolhe(L.id); marcar(a);
+        this.acao = { tipo: "lugar", L, dx: L.x - p.x, dy: L.y - p.y, mov: false }; return;
+      }
+    }
+    if (panear) { this.acao = { tipo: "pan", x: p.sx, y: p.sy, tx: this.v.tx, ty: this.v.ty }; return }
+    const [W, H] = this.dims(); if (p.x < 0 || p.y < 0 || p.x > W || p.y > H) { this.acao = { tipo: "pan", x: p.sx, y: p.sy, tx: this.v.tx, ty: this.v.ty }; return }
+    if (a.tipo === "mundo") {
+      if (f === "pincel" || f === "borracha") { marcar(a); this.acao = { tipo: "pinta", t: f === "borracha" ? 0 : this.o.terreno(), ult: p }; pintaMundo(a.obj, p, p, RAIOS[S.raio - 1], this.acao.t) }
+      else if (f === "lugar") {
+        marcar(a); const l = { id: uid(), nome: "Lugar novo", tipo: "cidade", x: p.x, y: p.y, categoria: "Lugar" };
+        a.obj.lugares.push(l); this.o.escolhe(l.id, true);
+      }
+    } else {
+      const P = a.obj;
+      if (f === "sala") { marcar(a); this.acao = { tipo: "sala", a: celP(P, p), b: celP(P, p) } }
+      else if (f === "pincel" || f === "borracha") { marcar(a); this.acao = { tipo: "piso", v: f === "pincel" ? 1 : 0, ult: p }; pintaPiso(P, p, p, this.acao.v) }
+      else if (f === "porta") { marcar(a); trocaPorta(P, p); this.o.mudou() }
+      else if (f === "numero") { marcar(a); trocaNumero(P, p); this.o.mudou() }
+    }
+    this.pedir();
+  }
+  move(e) {
+    this.hover = e.pointerType === "mouse" && this.v ? this.pt(e) : null;
+    if (!this.pts.has(e.pointerId)) { this.pedir(); return }
+    this.pts.set(e.pointerId, this.pt(e));
+    const v = this.v;
+    if (this.pinca && this.pts.size >= 2) {
+      const [a, b] = [...this.pts.values()], q = this.pinca, d = Math.hypot(a.sx - b.sx, a.sy - b.sy), cx = (a.sx + b.sx) / 2, cy = (a.sy + b.sy) / 2;
+      const z = Math.min(v.zmax, Math.max(v.zmin, q.z * d / q.d));
+      v.tx = cx - (q.cx - q.tx) * z / q.z; v.ty = cy - (q.cy - q.ty) * z / q.z; v.z = z; v.auto = false; this.pedir(); return;
+    }
+    const ac = this.acao; if (!ac) { this.pedir(); return }
+    const p = this.pt(e), a = this.o.alvo();
+    if (ac.tipo === "pan") { v.tx = ac.tx + p.sx - ac.x; v.ty = ac.ty + p.sy - ac.y; v.auto = false }
+    else if (ac.tipo === "lugar") { if (ac.mov || Math.hypot(p.x + ac.dx - ac.L.x, p.y + ac.dy - ac.L.y) * v.z > 4) { const [W, H] = this.dims(); ac.mov = true; ac.L.x = Math.min(W, Math.max(0, p.x + ac.dx)); ac.L.y = Math.min(H, Math.max(0, p.y + ac.dy)) } }
+    else if (ac.tipo === "pinta") { pintaMundo(a.obj, ac.ult, p, RAIOS[S.raio - 1], ac.t); ac.ult = p }
+    else if (ac.tipo === "sala") ac.b = celP(a.obj, p);
+    else if (ac.tipo === "piso") { pintaPiso(a.obj, ac.ult, p, ac.v); ac.ult = p }
+    this.pedir();
+  }
+  up(e) { if (!this.pts.has(e.pointerId)) return; this.pts.delete(e.pointerId); if (this.pts.size < 2) this.pinca = null; if (!this.pts.size) this.fimAcao() }
+  fimAcao() {
+    const ac = this.acao; this.acao = null; if (!ac) return; const a = this.o.alvo();
+    if (ac.tipo === "sala") encheSala(a.obj, ac.a, ac.b);
+    if (ac.tipo === "lugar" && !ac.mov) { hist(a.obj).des.pop(); return }
+    if (ac.tipo !== "pan") this.o.mudou();
+    this.pedir();
+  }
+  desenhar() {
+    const c = this.c, v = this.v, d = this.d; if (!v) return;
+    c.setTransform(1, 0, 0, 1, 0, 0); c.fillStyle = "#101114"; c.fillRect(0, 0, this.cv.width, this.cv.height);
+    c.setTransform(d * v.z, 0, 0, d * v.z, d * v.tx, d * v.ty);
+    const a = this.o.alvo(), f = this.o.ferramenta();
+    if (a.tipo === "mundo") desenhaMundo(c, a.obj, v.z, { sel: S.sel }); else desenhaPlanta(c, a.obj, v.z);
+    const ac = this.acao, s = 1 / v.z;
+    if (ac && ac.tipo === "sala") {
+      const x0 = Math.min(ac.a[0], ac.b[0]) * CP, y0 = Math.min(ac.a[1], ac.b[1]) * CP, x1 = (Math.max(ac.a[0], ac.b[0]) + 1) * CP, y1 = (Math.max(ac.a[1], ac.b[1]) + 1) * CP;
+      c.fillStyle = "rgba(247,240,222,.75)"; c.fillRect(x0, y0, x1 - x0, y1 - y0);
+      c.setLineDash([6 * s, 4 * s]); c.strokeStyle = TINTA; c.lineWidth = 2 * s; c.strokeRect(x0, y0, x1 - x0, y1 - y0); c.setLineDash([]);
+      c.fillStyle = TINTA; c.font = `700 ${12 * s}px "Atkinson Hyperlegible", sans-serif`; c.textAlign = "left"; c.textBaseline = "bottom";
+      c.fillText(`${(x1 - x0) / CP} × ${(y1 - y0) / CP} quadrados (${(x1 - x0) / CP * 1.5} × ${(y1 - y0) / CP * 1.5} m)`, x0, y0 - 4 * s);
+    }
+    if (this.hover && (f === "pincel" || f === "borracha") && !ac && a.obj.fonte !== "imagem") {
+      const r = a.tipo === "mundo" ? RAIOS[S.raio - 1] * C : CP * .5;
+      c.setLineDash([4 * s, 3 * s]); c.strokeStyle = "rgba(58,46,32,.75)"; c.lineWidth = 1.4 * s; c.beginPath(); c.arc(this.hover.x, this.hover.y, r, 0, 7); c.stroke(); c.setLineDash([]);
+    }
+  }
+}
+const OPTS = {
+  alvo, ferramenta: () => S.tool[alvo().tipo], terreno: () => S.terreno,
+  escolhe(id, novo) { S.sel = id; S.ajustes = false; atualizar(); if (novo) setTimeout(() => { const i = document.getElementById("nome-lugar"); if (i) { i.focus(); i.select() } }, 0) },
+  mudou() { atualizar() },
+  duplo(id) { abrirPlanta(id) },
+};
+
+/* =================== ações =================== */
+function abrirPlanta(id) {
+  if (!M.plantas[id]) { marcar({ tipo: "mundo", obj: M }); M.plantas[id] = novaPlanta() }
+  else carregaImg(M.plantas[id]);
+  S.alvo = { tipo: "planta", lugar: id }; S.sel = id; S.ajustes = false; S.tool.planta = M.plantas[id].fonte === "imagem" ? "mao" : "sala";
+  if (S.modo === "passos") S.passo = 4;
+  if (S.ed) { S.ed.v = null; S.ed.ajustar() } atualizar();
+}
+function voltarMundo() { S.alvo = { tipo: "mundo" }; if (S.ed) { S.ed.v = null; S.ed.ajustar() } atualizar() }
+function gerarDeNovo(seed) {
+  if (M.fonte === "imagem") trocarFonte(M, "desenho");
+  marcar({ tipo: "mundo", obj: M }); M.seed = seed; gerar(M.mapa.cel, M.mapa.w, M.mapa.h, seed); atualizar();
+}
+function confirmar(bt, texto, acao) {
+  if (bt.dataset.conf) { acao(); return }
+  const antes = bt.innerHTML; bt.dataset.conf = "1"; bt.textContent = texto; bt.classList.add("conf");
+  setTimeout(() => { if (bt.isConnected && bt.dataset.conf) { delete bt.dataset.conf; bt.innerHTML = antes; bt.classList.remove("conf") } }, 3500);
+}
+async function trocarMesa(id, usar, caixa) {
+  const m = MESAS.find(x => x.id === id); if (!m) return;
+  const antes = m.mundo_id; m.mundo_id = usar ? M.id : null; atualizar();
+  const { error } = await sb.from("mesas").update({ mundo_id: m.mundo_id }).eq("id", id);
+  if (error) { m.mundo_id = antes; status("Não consegui mudar a mesa " + m.nome + ".", true); atualizar() }
+}
+
+/* =================== pedaços de tela =================== */
+const IC = {
+  mao: "M12 3v18M3 12h18M12 3 9.5 5.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M3 12l2.5-2.5M3 12l2.5 2.5M21 12l-2.5-2.5M21 12l-2.5 2.5",
+  pincel: "M4 20c2.5 0 4.5-1.2 4.5-3.4a2.3 2.3 0 0 0-4.5-.5c0 1.6 0 2.9 0 3.9ZM8.6 15.4 19.4 4.6a1.9 1.9 0 0 0-2.7-2.7L6 12.6",
+  borracha: "M4.5 15.5 13 7l6 6-6 6H8.5ZM10 19h10",
+  lugar: "M12 21s-6.5-5.6-6.5-10.5a6.5 6.5 0 0 1 13 0C18.5 15.4 12 21 12 21ZM12 12.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z",
+  sala: "M4 5h16v14H4ZM4 12h6M14 12h6",
+  porta: "M6 21V4h12v17M3 21h18M14.5 12.5h.01",
+  numero: "M5 9h14M5 15h14M10 4 8 20M16 4l-2 16",
+  desfazer: "M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11",
+  refazer: "M15 14l5-5-5-5M20 9H9.5a5.5 5.5 0 0 0 0 11H13",
+  ajustes: "M4 7h10M18 7h2M4 17h4M12 17h8M14 4.5v5M8 14.5v5",
+  imagem: "M4 5h16v14H4ZM4 16l5-5 4 4 2-2 5 5M15 9.5h.01",
+};
+const ic = k => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${IC[k]}"/></svg>`;
+function ferrDe(tipo) {
+  const o = tipo === "mundo" ? M : alvo().obj, img = o.fonte === "imagem";
+  if (tipo === "mundo") return img ? [["mao", "Mover"], ["lugar", "Lugar"]] : [["mao", "Mover"], ["pincel", "Pintar"], ["borracha", "Apagar"], ["lugar", "Lugar"]];
+  return img ? [["mao", "Mover"]] : [["mao", "Mover"], ["sala", "Sala"], ["pincel", "Piso"], ["borracha", "Apagar"], ["porta", "Porta"], ["numero", "Número"]];
+}
+const DICA = {
+  mundo: { mao: "Arraste para andar pelo mapa. Toque num lugar para escolher e arraste para mudar de posição.", pincel: "Pinte com o terreno escolhido. Floresta e montanha ganham o desenho sozinhas.", borracha: "Apaga a terra e devolve o mar.", lugar: "Toque no mapa para pôr uma cidade ou uma masmorra." },
+  planta: { mao: "Arraste para andar pela planta.", sala: "Arraste um retângulo para fazer uma sala. As paredes aparecem sozinhas.", pincel: "Pinte quadrados de piso, bom para corredores.", borracha: "Apaga o piso, e as paredes acompanham.", porta: "Toque numa parede para pôr ou tirar uma porta.", numero: "Toque numa sala para numerar. Toque no número para tirar." },
+};
+function botoesFerr(lista) { const t = alvo().tipo; return (lista || ferrDe(t)).map(([k, n]) => `<button type="button" class="ferr" data-ferr="${k}" aria-pressed="${S.tool[t] === k}">${ic(k)}<span>${n}</span></button>`).join("") }
+function swatches(ids) { return `<div class="sw">${(ids || [1, 2, 3, 4, 0]).map(i => `<button type="button" data-ter="${i}" aria-pressed="${S.tool.mundo === "pincel" && S.terreno === i}"><i style="background:${TER[i].c}"></i>${TER[i].n}</button>`).join("")}</div>` }
+function tamanhos() { return `<div class="tams" role="group" aria-label="Tamanho do pincel">${RAIOS.map((r, i) => `<button type="button" data-raio="${i + 1}" aria-pressed="${S.raio === i + 1}" aria-label="Pincel ${i + 1}"><i style="width:${4 + i * 3}px;height:${4 + i * 3}px"></i></button>`).join("")}</div>` }
+function trilha() { const a = alvo(); return a.tipo === "mundo" ? `<b>${esc(M.nome || "Mundo sem nome")}</b>` : `<button type="button" data-acao="voltar-mundo">${esc(M.nome || "Mundo")}</button><em>›</em><b>${esc(a.lugar ? a.lugar.nome : "Planta")}</b>` }
+/* desenhado ou imagem: o mesmo controle para o mapa do mundo e para a planta */
+function fonteCtl(o, quem) {
+  return `<div class="seg" role="group" aria-label="De onde vem o mapa" style="min-width:210px"><button type="button" data-fonte="desenho" data-de="${quem}" aria-pressed="${o.fonte === "desenho"}">Desenhado</button><button type="button" data-fonte="imagem" data-de="${quem}" aria-pressed="${o.fonte === "imagem"}">Imagem</button></div>`
+    + `<button type="button" class="mbt" data-acao="enviar" data-de="${quem}">${ic("imagem")}${o.imagem ? "Trocar a imagem" : "Enviar uma imagem"}</button>`;
+}
+function caixaLugar(l) {
+  const temP = !!M.plantas[l.id];
+  return `<label class="cp"><span>Nome</span><input id="nome-lugar" type="text" value="${esc(l.nome)}" autocomplete="off" maxlength="80"></label>
+    <div class="seg" role="group" aria-label="Tipo"><button type="button" data-tipo="cidade" aria-pressed="${l.tipo === "cidade"}">Cidade</button><button type="button" data-tipo="masmorra" aria-pressed="${l.tipo === "masmorra"}">Masmorra</button></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="mbt forte" data-acao="planta" data-id="${l.id}">${temP ? "Abrir a planta" : "Fazer a planta"}</button><button type="button" class="mbt" data-acao="apagar-lugar">Apagar lugar</button></div>`;
+}
+function caixasMesas() {
+  if (!MESAS.length) return `<p class="dica">Você ainda não é mestre de nenhuma mesa. Abra uma no Início e volte aqui.</p>`;
+  return MESAS.map(m => `<label class="ck"><input type="checkbox" data-mesa="${m.id}" ${m.mundo_id === M.id ? "checked" : ""}> <span>${esc(m.nome)}${m.mundo_id && m.mundo_id !== M.id ? ` <small class="dica">(hoje usa outro mundo)</small>` : ""}</span></label>`).join("")
+    + `<p class="dica">Cada mesa usa um mundo. O que os jogadores descobrem fica separado em cada mesa.</p>`;
+}
+function resumo(X, mesas) { const p = Object.keys(X.plantas).length, us = (mesas || []).filter(m => m.mundo_id === X.id).map(m => m.nome); return `${X.lugares.length} ${X.lugares.length === 1 ? "lugar" : "lugares"} · ${p} ${p === 1 ? "planta" : "plantas"}${X.fonte === "imagem" ? " · mapa por imagem" : ""}${us.length ? " · usado em " + us.join(", ") : ""}` }
+const desfBtns = () => `<span class="desf" style="display:flex;gap:6px"><button type="button" class="mbt" data-acao="desfazer" aria-label="Desfazer">${ic("desfazer")}<span>Desfazer</span></button><button type="button" class="mbt" data-acao="refazer" aria-label="Refazer">${ic("refazer")}<span>Refazer</span></button></span>`;
+function opcoesPlanta(a) {
+  const P = a.obj;
+  return `${fonteCtl(P, "planta")}<button type="button" class="mbt" data-acao="apagar-planta">Apagar a planta</button>`;
+}
+
+/* =================== Tela livre =================== */
+const LIVRE = {
+  esqueleto() {
+    return `<div class="p2"><div class="tela" data-tela></div>
+      <nav class="flut chips trilha" data-r="trilha" aria-label="Onde você está"></nav>
+      <div class="flut desf"><button type="button" data-acao="desfazer" aria-label="Desfazer">${ic("desfazer")}</button><button type="button" data-acao="refazer" aria-label="Refazer">${ic("refazer")}</button><button type="button" data-acao="ajustes" data-r="bt-aj" aria-label="Ajustes do mundo">${ic("ajustes")}</button></div>
+      <div class="flut bandeja" data-r="bandeja"></div>
+      <div class="flut dock" data-r="rail" role="toolbar" aria-label="Ferramentas"></div>
+      <div class="flut cartao" data-r="cartao" hidden></div></div>`;
+  },
+  partes() {
+    const r = k => document.querySelector(`[data-r="${k}"]`), a = alvo(), t = S.tool[a.tipo];
+    r("trilha").innerHTML = trilha(); r("rail").innerHTML = botoesFerr(); r("bt-aj").setAttribute("aria-pressed", String(S.ajustes));
+    const troca = `<label class="troca"><input type="checkbox" data-acao="dedo" ${S.dedoMove ? "checked" : ""}> Caneta desenha, dedo move</label>`;
+    let band;
+    if (a.tipo === "planta") band = `${opcoesPlanta(a)}<p class="dica">${a.obj.fonte === "imagem" ? "A planta é uma imagem. Troque quando quiser." : DICA.planta[t] + " Cada quadrado vale 1,5 m."}</p>`;
+    else if (t === "pincel" && M.fonte !== "imagem") band = `${swatches()}${tamanhos()}${troca}`;
+    else if (t === "borracha" && M.fonte !== "imagem") band = `${tamanhos()}${troca}`;
+    else band = `<p class="dica">${DICA.mundo[t] || DICA.mundo.mao}${t !== "lugar" ? " Toque duas vezes num lugar para entrar na planta dele." : ""}</p>${M.fonte !== "imagem" ? troca : ""}`;
+    r("bandeja").innerHTML = band;
+    const l = a.tipo === "mundo" && S.sel && lugar(S.sel), cart = r("cartao");
+    if (S.ajustes) {
+      cart.hidden = false;
+      cart.innerHTML = `<h3>O mundo</h3><label class="cp"><span>Nome do mundo</span><input id="nome-mundo" type="text" value="${esc(M.nome)}" autocomplete="off" maxlength="60"></label>
+        <div><p class="h4">O mapa</p><div style="display:flex;gap:8px;flex-wrap:wrap">${fonteCtl(M, "mundo")}${M.fonte === "desenho" ? `<button type="button" class="mbt" data-acao="gerar">Gerar outro continente</button>` : ""}</div></div>
+        <div><p class="h4">Mesas que usam este mundo</p>${caixasMesas()}</div><button type="button" class="mbt" data-acao="ajustes">Fechar</button>`;
+    } else if (l) { cart.hidden = false; cart.innerHTML = `<h3>${esc(l.nome)}</h3>${caixaLugar(l)}<p class="dica">Dois toques no lugar também abrem a planta.</p>` }
+    else { cart.hidden = true; cart.innerHTML = "" }
+  },
+};
+
+/* =================== Passo a passo =================== */
+const PASSOS = [["O mapa", "Desenhe ou envie uma imagem"], ["O relevo", "Florestas, montanhas, desertos"], ["Os lugares", "Cidades e masmorras"], ["As plantas", "Cada lugar por dentro"], ["As mesas", "Onde este mundo vale"]];
+const CANDS = new Map();
+const PASSOS_UI = {
+  esqueleto() {
+    return `<div class="p3"><div class="esq"><ol class="passos" data-r="passos"></ol></div>
+      <div class="meio"><div class="faixa" data-r="faixa"></div><div class="tela" data-tela></div><div class="rodape" data-r="rodape"></div></div></div>`;
+  },
+  partes() {
+    const r = k => document.querySelector(`[data-r="${k}"]`), a = alvo(), n = S.passo, img = M.fonte === "imagem";
+    r("passos").innerHTML = PASSOS.map(([t, s], i) => `<li><button type="button" class="passo${i + 1 < n ? " feito" : ""}" data-passo="${i + 1}" ${i + 1 === n ? 'aria-current="step"' : ""}><span class="n">${i + 1 < n ? "✓" : i + 1}</span><span><b>${t}</b><small>${s}</small></span></button></li>`).join("");
+    let f = "";
+    if (n === 1) {
+      f = `<h2>O mapa do mundo</h2><div class="linha"><label class="cp" style="min-width:220px;flex:1"><span>Nome do mundo</span><input id="nome-mundo" type="text" value="${esc(M.nome)}" autocomplete="off" maxlength="60"></label></div>
+        <div class="linha">${fonteCtl(M, "mundo")}</div>`;
+      if (img) f += `<p class="dica">O mapa é a sua imagem. Quando trocar por uma versão nova, os lugares marcados continuam no mesmo ponto do mapa.</p>`;
+      else {
+        if (!S.cands) S.cands = [1, 2, 3].map(() => Math.floor(Math.random() * 1e6));
+        f += `<div class="linha">${botoesFerr([["mao", "Mover"], ["pincel", "Pintar terra"], ["borracha", "Pintar mar"]])}${tamanhos()}</div>
+        <div class="linha"><span class="dica">Ou comece de um destes e ajuste no pincel:</span><div class="cands">${S.cands.map(sd => `<button type="button" data-cand="${sd}" aria-label="Usar este continente"><canvas class="mini" data-cmini="${sd}"></canvas></button>`).join("")}</div><button type="button" class="mbt" data-acao="cands">Mais três</button></div>`;
+      }
+    } else if (n === 2) {
+      f = img ? `<h2>O relevo</h2><p class="dica">Seu mapa é uma imagem, então o relevo já está nela. Siga para os lugares.</p>`
+        : `<h2>Ponha o relevo</h2><div class="linha">${botoesFerr([["mao", "Mover"]])}${swatches([2, 3, 4, 1])}${tamanhos()}</div><p class="dica">Pinte por cima da terra. O campo é a terra lisa.</p>`;
+    } else if (n === 3) {
+      const l = S.sel && lugar(S.sel);
+      f = `<h2>Marque os lugares</h2><div class="linha">${botoesFerr([["mao", "Mover"], ["lugar", "Pôr lugar"]])}<span class="dica">Toque no mapa para pôr. Arraste um lugar para mudar de posição.</span></div>
+        ${l ? `<div class="linha" style="align-items:end"><label class="cp" style="min-width:200px"><span>Nome</span><input id="nome-lugar" type="text" value="${esc(l.nome)}" autocomplete="off" maxlength="80"></label><div class="seg" style="min-width:200px"><button type="button" data-tipo="cidade" aria-pressed="${l.tipo === "cidade"}">Cidade</button><button type="button" data-tipo="masmorra" aria-pressed="${l.tipo === "masmorra"}">Masmorra</button></div><button type="button" class="mbt" data-acao="apagar-lugar">Apagar</button></div>` : ""}`;
+    } else if (n === 4) {
+      if (a.tipo === "planta") f = `<h2>Planta de ${esc(a.lugar.nome)}</h2><div class="linha">${opcoesPlanta(a)}<button type="button" class="mbt" data-acao="voltar-mundo">‹ Escolher outro lugar</button></div>
+        ${a.obj.fonte === "imagem" ? `<p class="dica">A planta é uma imagem. Troque quando quiser.</p>` : `<div class="linha">${botoesFerr()}</div><p class="dica">${DICA.planta[S.tool.planta]} Cada quadrado vale 1,5 m.</p>`}`;
+      else f = `<h2>Desenhe por dentro dos lugares</h2><p class="dica">Escolha um lugar. A planta é opcional, e pode ser desenhada aqui ou enviada como imagem.</p><div class="linha">${M.lugares.map(l => `<button type="button" class="mbt${M.plantas[l.id] ? "" : " forte"}" data-acao="planta" data-id="${l.id}">${M.plantas[l.id] ? "Abrir" : "Fazer"}: ${esc(l.nome)}</button>`).join("") || `<span class="dica">Volte à etapa 3 e marque um lugar primeiro.</span>`}</div>`;
+    } else {
+      f = `<h2>Em quais mesas este mundo vale?</h2><div style="display:grid;gap:4px">${caixasMesas()}</div>${S.pronto ? `<div class="pronto"><b style="font:600 18px var(--f-disp)">${esc(M.nome)} está salvo</b><span class="dica">${esc(resumo(M, MESAS))}. Você pode voltar e mudar quando quiser.</span><a class="mbt forte" href="mundos.html" style="justify-self:start">Ver Meus mundos</a></div>` : ""}`;
+    }
+    r("faixa").innerHTML = f;
+    r("rodape").innerHTML = `<button type="button" class="mbt" data-acao="passo-ant" ${n === 1 ? "disabled" : ""}>‹ Voltar</button>${desfBtns()}${n < 5 ? `<button type="button" class="mbt forte" data-acao="passo-prox">Próximo ›</button>` : `<button type="button" class="mbt forte" data-acao="pronto">Pronto</button>`}`;
+  },
+};
+function irPasso(n) { prepPasso(n); atualizar() }
+function prepPasso(n) {
+  S.passo = Math.min(5, Math.max(1, n)); S.pronto = false; S.ajustes = false;
+  if (S.alvo.tipo === "planta" && S.passo !== 4) { S.alvo = { tipo: "mundo" }; if (S.ed) { S.ed.v = null; S.ed.ajustar() } }
+  const img = M.fonte === "imagem";
+  if (S.passo === 1) { S.tool.mundo = img ? "mao" : "pincel"; S.terreno = 1 }
+  if (S.passo === 2) { S.tool.mundo = img ? "mao" : "pincel"; S.terreno = 2 }
+  if (S.passo === 3) S.tool.mundo = "lugar";
+  if (S.passo >= 4) S.tool.mundo = "mao";
+}
+
+/* =================== montagem e eventos =================== */
+const SHELL = { passos: PASSOS_UI, livre: LIVRE };
+function montar() {
+  if (S.ed) { S.ed.fim(); S.ed = null }
+  const app = $("#app"); app.innerHTML = SHELL[S.modo].esqueleto();
+  const t = app.querySelector("[data-tela]"); if (t) S.ed = new Editor(t, OPTS);
+  document.querySelectorAll("[data-modo]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.modo === S.modo)));
+  atualizar();
+}
+function atualizar() {
+  if (!M) return;
+  for (const t of ["mundo", "planta"]) {   // a ferramenta escolhida tem de existir para o mapa como ele está (imagem não tem pincel)
+    if (t === "planta" && alvo().tipo !== "planta") continue;
+    const ok = ferrDe(t).map(x => x[0]); if (!ok.includes(S.tool[t])) S.tool[t] = ok.includes("sala") ? "sala" : "mao";
+  }
+  SHELL[S.modo].partes();
+  $("#nm").textContent = M.nome || "Mundo sem nome";
+  document.querySelectorAll("canvas[data-cmini]").forEach(cv => {
+    const sd = +cv.dataset.cmini; if (!CANDS.has(sd)) CANDS.set(sd, { fonte: "desenho", mapa: novoMapa(sd, true), lugares: [], plantas: {} });
+    desenhaMini(cv, CANDS.get(sd));
+  });
+  if (S.ed) S.ed.pedir();
+  verSujo();
+}
+document.querySelectorAll("[data-modo]").forEach(b => b.onclick = () => {
+  if (S.modo === b.dataset.modo) return;
+  S.modo = b.dataset.modo; try { localStorage.setItem("sm-mundos-modo", S.modo) } catch (e) { }
+  S.ajustes = false; if (S.modo === "passos") { if (S.alvo.tipo === "planta") S.passo = 4; else prepPasso(S.passo) }
+  montar();
+});
+const app = $("#app");
+app.addEventListener("click", e => {
+  const b = e.target.closest("button,[data-acao]"); if (!b || !app.contains(b) || b.matches("input")) return;
+  const d = b.dataset;
+  if (d.ferr) { S.tool[alvo().tipo] = d.ferr; if (d.ferr === "pincel" && S.modo === "passos" && S.passo === 1) S.terreno = 1; atualizar(); return }
+  if (d.ter !== undefined) { S.terreno = +d.ter; S.tool.mundo = "pincel"; atualizar(); return }
+  if (d.raio) { S.raio = +d.raio; atualizar(); return }
+  if (d.tipo) { const l = lugar(S.sel); if (l) { marcar({ tipo: "mundo", obj: M }); lugar(S.sel).tipo = d.tipo } atualizar(); return }
+  if (d.fonte) { trocarFonte(d.de === "mundo" ? M : alvo().obj, d.fonte); return }
+  if (d.passo) { irPasso(+d.passo); return }
+  if (d.cand) { gerarDeNovo(+d.cand); if (S.ed) S.ed.ajustar(); return }
+  switch (d.acao) {
+    case "desfazer": desfazer(); break;
+    case "refazer": refazer(); break;
+    case "voltar-mundo": voltarMundo(); break;
+    case "planta": abrirPlanta(d.id); break;
+    case "ajustes": S.ajustes = !S.ajustes; if (S.ajustes) S.sel = null; atualizar(); break;
+    case "enviar": pedirImagem(d.de === "mundo" ? M : alvo().obj); break;
+    case "apagar-lugar": confirmar(b, "Apagar mesmo?", () => { marcar({ tipo: "mundo", obj: M }); M.lugares = M.lugares.filter(l => l.id !== S.sel); delete M.plantas[S.sel]; S.sel = null; atualizar() }); break;
+    case "apagar-planta": confirmar(b, "Apagar a planta?", () => { const id = S.alvo.lugar; voltarMundo(); marcar({ tipo: "mundo", obj: M }); delete M.plantas[id]; atualizar() }); break;
+    case "gerar": confirmar(b, "Toque de novo para trocar a terra", () => gerarDeNovo(Math.floor(Math.random() * 1e6))); break;
+    case "cands": S.cands = null; atualizar(); break;
+    case "passo-ant": irPasso(S.passo - 1); break;
+    case "passo-prox": irPasso(S.passo + 1); break;
+    case "pronto": S.pronto = true; salvar(); atualizar(); break;
+  }
+});
+app.addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.mesa) trocarMesa(t.dataset.mesa, t.checked);
+  if (t.dataset.acao === "dedo") { S.dedoMove = t.checked; atualizar() }
+});
+app.addEventListener("input", e => {
+  const t = e.target;
+  if (t.id === "nome-lugar") { const l = lugar(S.sel); if (!l) return; l.nome = t.value; const h = app.querySelector(".cartao h3"); if (h) h.textContent = l.nome; S.ed && S.ed.pedir(); verSujo() }
+  if (t.id === "nome-mundo") { M.nome = t.value; $("#nm").textContent = M.nome || "Mundo sem nome"; const tr = app.querySelector("[data-r=trilha] b"); if (tr && alvo().tipo === "mundo") tr.textContent = M.nome; verSujo() }
+});
+addEventListener("keydown", e => {
+  if (!M || e.target.matches("input,select,textarea")) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") { e.preventDefault(); e.shiftKey ? refazer() : desfazer() }
+});
+addEventListener("beforeunload", e => { if (M && (pendente() || enviando)) { salvar(); e.preventDefault(); e.returnValue = "" } });
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && M && pendente()) salvar() });
+$("#bt-voltar").onclick = async e => { e.preventDefault(); if (enviando) { status("Espere a imagem terminar de enviar.", true); return } await salvar(); if (salvando) await salvando; location.href = "mundos.html" };
+
+async function abrirEditor(id) {
+  document.body.classList.add("editando"); $("#ed").hidden = false; status("Abrindo…");
+  const [w, rows, mesas] = await Promise.all([
+    sb.from("mesa_conteudo").select("id,nome,dono_id").eq("id", id).eq("tipo", "mundo").maybeSingle(),
+    sb.from("mesa_conteudo").select(COLS).eq("mundo_id", id),
+    sb.from("mesas").select("id,nome,mundo_id").eq("mestre_id", EU.id).order("criado_em")]);
+  if (w.error || rows.error || !w.data || w.data.dono_id !== EU.id) {
+    app.innerHTML = `<p class="msg erro" style="padding:16px">Não achei esse mundo, ou ele não é seu. <a href="mundos.html">Voltar a Meus mundos</a></p>`; status(""); return;
+  }
+  M = montarMundo(w.data, rows.data); MESAS = mesas.data || [];
+  const noBanco = new Set([id, ...rows.data.map(r => r.id)]);
+  linhas().forEach(r => { if (noBanco.has(r.id)) SALVO.set(r.id, JSON.stringify(r)) });
+  carregaImg(M);
+  document.title = (M.nome || "Mundo") + " · Sala de Mesa";
+  limparSobras(rows.data);
+  prepPasso(1); montar(); if (!pendente()) status("Salvo");
+}
+
+/* =================== Meus mundos =================== */
+const LIB = {};
+async function abrirLib() {
+  $("#lib").hidden = false;
+  const lm = $("#l-mundos"); lm.textContent = "Carregando…";
+  const { data: ws, error } = await sb.from("mesa_conteudo").select("id,nome,dono_id,criado_em").eq("tipo", "mundo").eq("dono_id", EU.id).order("criado_em", { ascending: false });
+  if (error) { lm.textContent = ""; const e = $("#lib-erro"); e.textContent = "Não consegui ler os seus mundos agora. Tente de novo."; e.hidden = false; return }
+  const ids = ws.map(w => w.id);
+  const [rows, mesas] = await Promise.all([
+    ids.length ? sb.from("mesa_conteudo").select(COLS).in("mundo_id", ids).in("tipo", ["mapa", "pagina"]) : { data: [] },
+    sb.from("mesas").select("id,nome,mundo_id").eq("mestre_id", EU.id)]);
+  lm.textContent = "";
+  if (!ws.length) { lm.append(smEl("p", { class: "vazio" }, "Você ainda não criou nenhum mundo. Crie o primeiro aqui embaixo.")); return }
+  ws.forEach(w => {
+    const X = LIB[w.id] = montarMundo(w, rows.data || []); carregaImg(X);
+    const cv = smEl("canvas", { "data-mini": w.id, "aria-hidden": "true" });
+    const apagar = smEl("button", { class: "mini-bt", type: "button", onclick: ev => smConfirmar(ev.currentTarget, "Toque de novo para apagar", () => apagarMundo(w.id, ev.target)) }, "Apagar");
+    lm.append(smEl("div", { class: "mcard" }, smEl("a", { href: "mundos.html?w=" + w.id, "aria-label": "Abrir " + w.nome }, cv),
+      smEl("div", {}, smEl("b", {}, w.nome), smEl("small", {}, resumo(X, mesas.data)), smEl("div", { class: "acoes" }, smEl("a", { class: "mini-bt", href: "mundos.html?w=" + w.id }, "Abrir"), apagar))));
+    desenhaMini(cv, X);
+  });
+}
+async function apagarMundo(id, bt) {
+  bt.disabled = true; bt.textContent = "Apagando…";
+  try {
+    const pasta = "mundos/" + id;
+    for (let i = 0; i < 20; i++) { const arqs = await smListar(pasta); if (!arqs.length) break; const { error } = await sb.storage.from("mesas").remove(arqs.map(f => pasta + "/" + f.name)); if (error) throw error }
+    const { error } = await sb.from("mesa_conteudo").delete().eq("id", id); if (error) throw error;
+    abrirLib();
+  } catch (x) { console.error(x); bt.disabled = false; bt.textContent = "Apagar"; const e = $("#lib-erro"); e.textContent = "Não consegui apagar o mundo. Confira a internet e tente de novo."; e.hidden = false }
+}
+document.querySelectorAll('input[name="comeco"]').forEach(r => r.onchange = () => { $("#c-img").hidden = document.querySelector('input[name="comeco"]:checked').value !== "imagem" });
+$("#f-novo").onsubmit = async e => {
+  e.preventDefault();
+  const msg = $("#novo-msg"), bt = $("#bt-novo"), nome = $("#in-nome").value.trim(), comeco = document.querySelector('input[name="comeco"]:checked').value, arq = $("#in-img").files[0];
+  msg.className = "msg erro";
+  if (!nome) { msg.textContent = "Dê um nome para o mundo."; return }
+  if (comeco === "imagem" && !arq) { msg.textContent = "Escolha a imagem do mapa."; return }
+  bt.disabled = true; msg.className = "msg"; msg.textContent = "Criando…";
+  try {
+    const id = uid(), mapaId = uid(), seed = Math.floor(Math.random() * 1e6), mapa = novoMapa(seed, comeco === "pronto");
+    let r = await sb.from("mesa_conteudo").insert({ id, tipo: "mundo", nome, dono_id: EU.id }); if (r.error) throw r.error;
+    const linha = { id: mapaId, tipo: "mapa", nome: "Mapa do mundo", mundo_id: id, dados: { fonte: "desenho", desenho: { w: mapa.w, h: mapa.h, seed, cel: b64(mapa.cel) } } };
+    if (comeco === "imagem") {
+      msg.textContent = "Enviando a imagem…";
+      const corpo = await smReduzir(arq, 3200, 1500 * 1024); let bmp;
+      try { bmp = await createImageBitmap(corpo) } catch (x) { throw new Error("formato") }
+      const caminho = "mundos/" + id + "/" + smNomeArquivo(arq.name, corpo !== arq ? "jpg" : null);
+      const up = await sb.storage.from("mesas").upload(caminho, corpo, { contentType: corpo.type || arq.type }); if (up.error) throw up.error;
+      Object.assign(linha, { imagem: caminho, largura: bmp.width, altura: bmp.height }); linha.dados.fonte = "imagem";
+    }
+    r = await sb.from("mesa_conteudo").insert(linha); if (r.error) throw r.error;
+    location.href = "mundos.html?w=" + id;
+  } catch (x) {
+    console.error(x); bt.disabled = false; msg.className = "msg erro";
+    msg.textContent = x.message === "formato" ? "Não consegui ler essa imagem. Use JPG ou PNG." : "Não consegui criar o mundo. Confira a internet e tente de novo.";
+  }
+};
+
+(async () => {
+  EU = (await smExigirLogin()).user;
+  if (WID) await abrirEditor(WID); else await abrirLib();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => S.ed && S.ed.pedir());
+})().catch(x => { if (x.message !== "sem login") { console.error(x); const e = $("#lib-erro"); e.textContent = "Algo deu errado ao abrir. Tente de novo."; e.hidden = false; $("#lib").hidden = false } });
+</script>
+</body>
+</html>
