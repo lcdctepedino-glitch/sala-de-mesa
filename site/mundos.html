@@ -266,7 +266,7 @@ function montarMundo(w, rows) {
 /* as linhas que o criador cuida; páginas e mapas criados em outras telas não entram e ficam como estão */
 function linhas() {
   const [W, H] = dimsMundo(M), b = { id: null, tipo: null, nome: null, mundo_id: null, dono_id: null, lugar_id: null, mapa_id: null, categoria: null, x: null, y: null, imagem: null, largura: null, altura: null, dados: null };
-  const out = [{ ...b, id: M.id, tipo: "mundo", nome: M.nome.trim() || "Mundo sem nome", dono_id: EU.id }];
+  const out = [{ ...b, id: M.id, tipo: "mundo", nome: M.nome.trim() || "Mundo sem nome", dono_id: EU.id, dados: {} }];   // dados não pode ir vazio (null): o banco recusa
   out.push({ ...b, id: M.mapaId, tipo: "mapa", nome: "Mapa do mundo", mundo_id: M.id, imagem: M.imagem, largura: M.largura, altura: M.altura,
     dados: { fonte: M.fonte, desenho: { w: M.mapa.w, h: M.mapa.h, seed: M.seed, cel: b64(M.mapa.cel) } } });
   for (const l of M.lugares) out.push({ ...b, id: l.id, tipo: "pagina", nome: l.nome.trim() || "Lugar sem nome", mundo_id: M.id, mapa_id: M.mapaId, categoria: CAT_PADRAO.includes(l.categoria || "Lugar") ? (l.tipo === "masmorra" ? "Masmorra" : "Cidade") : l.categoria,
@@ -696,7 +696,7 @@ app.addEventListener("click", e => {
     case "cands": S.cands = null; atualizar(); break;
     case "passo-ant": irPasso(S.passo - 1); break;
     case "passo-prox": irPasso(S.passo + 1); break;
-    case "pronto": S.pronto = true; salvar(); atualizar(); break;
+    case "pronto": sairDoEditor(true); break;
   }
 });
 app.addEventListener("change", e => {
@@ -715,7 +715,20 @@ addEventListener("keydown", e => {
 });
 addEventListener("beforeunload", e => { if (M && (pendente() || enviando)) { salvar(); e.preventDefault(); e.returnValue = "" } });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden" && M && pendente()) salvar() });
-$("#bt-voltar").onclick = async e => { e.preventDefault(); if (enviando) { status("Espere a imagem terminar de enviar.", true); return } await salvar(); if (salvando) await salvando; location.href = "mundos.html" };
+/* sair do editor: grava tudo antes. "Pronto" volta para a página de onde ele veio (Meus mundos ou o Mundo de uma mesa);
+   "‹ Mundos" vai sempre para a lista. Se não conseguir gravar, fica e avisa. */
+async function sairDoEditor(voltar) {
+  if (enviando) { status("Espere a imagem terminar de enviar.", true); return }
+  status("Salvando…"); await salvar(); if (salvando) await salvando;
+  if (pendente()) { status("Não consegui salvar. Confira a internet e toque de novo.", true); return }
+  let destino = "mundos.html";
+  if (voltar) try {
+    const r = new URL(document.referrer);
+    if (r.origin === location.origin && /\/(mundos|mundo|mesa|index)\.html$/.test(r.pathname) && !/[?&]w=/.test(r.search)) destino = r.href;
+  } catch (e) { }
+  location.href = destino;
+}
+$("#bt-voltar").onclick = e => { e.preventDefault(); sairDoEditor(false) };
 
 async function abrirEditor(id) {
   document.body.classList.add("editando"); $("#ed").hidden = false; status("Abrindo…");
