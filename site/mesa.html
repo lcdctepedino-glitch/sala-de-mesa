@@ -19,7 +19,7 @@
 <body>
 <main class="pag">
   <a class="lnk" href="index.html">‹ Início</a>
-  <div style="display:grid;gap:4px"><h1 id="m-nome">Mesa</h1><p class="mute" id="m-papel"></p></div>
+  <div class="centro" style="display:grid;gap:6px"><h1 id="m-nome">Mesa</h1><p class="mute" id="m-papel"></p></div>
   <p class="msg erro" id="m-erro" hidden></p>
   <a class="bt" id="bt-sala" href="#">Abrir a sala</a>
   <a class="bt sec" id="bt-mundo" href="#">Abrir o mundo</a>
@@ -64,6 +64,7 @@
 
 <script src="js/supabase.js"></script>
 <script src="js/comum.js"></script>
+<script src="js/brasa.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const M = smParam("m");
@@ -72,7 +73,7 @@ let EU, MESA, MESTRE = false;
 function erro(t) { const e = $("#m-erro"); e.textContent = t; e.hidden = !t }
 
 async function carregar() {
-  EU = (await smExigirLogin()).user;
+  EU = (await smExigirLogin()).user; SMBrasa.cena("brasas");
   const { data, error } = await sb.from("mesas").select("id,nome,mestre_id,codigo,mundo_id").eq("id", M).maybeSingle();
   if (error || !data) { erro("Não achei essa mesa, ou você não está nela."); $("#bt-sala").hidden = $("#bt-mundo").hidden = true; return }
   MESA = data; MESTRE = data.mestre_id === EU.id;

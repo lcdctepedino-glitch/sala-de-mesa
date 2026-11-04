@@ -13,8 +13,8 @@
 <link rel="stylesheet" href="js/base.css">
 </head>
 <body>
-<main class="pag" id="pag-login" hidden>
-  <div style="padding-top:8vh;display:grid;gap:6px">
+<main class="pag" id="pag-login" hidden style="min-height:100dvh;align-content:center;max-width:440px">
+  <div class="centro" style="display:grid;gap:8px">
     <div class="marca">Sala de Mesa</div>
     <p class="mute" id="login-sub">Entre com a sua conta.</p>
   </div>
@@ -24,12 +24,12 @@
     <label class="campo"><span>Senha</span><input id="in-senha" type="password" autocomplete="current-password" minlength="6" required></label>
     <p class="msg" id="login-msg" role="status"></p>
     <button class="bt" id="bt-login" type="submit">Entrar</button>
-    <button class="lnk" id="bt-trocar" type="button">Ainda não tenho conta · criar conta</button>
+    <button class="lnk" id="bt-trocar" type="button" style="justify-self:center">Ainda não tenho conta · criar conta</button>
   </form>
 </main>
 
 <main class="pag" id="pag-inicio" hidden>
-  <div class="topo"><div class="marca" style="font-size:28px">Sala de Mesa</div><button class="lnk" id="bt-sair" type="button">Sair</button></div>
+  <div class="topo"><div class="marca" style="font-size:30px">Sala de Mesa</div><button class="lnk" id="bt-sair" type="button">Sair</button></div>
   <p class="mute" id="ola"></p>
 
   <section>
@@ -68,6 +68,7 @@
 
 <script src="js/supabase.js"></script>
 <script src="js/comum.js"></script>
+<script src="js/brasa.js"></script>
 <script>
 let modoCadastro = false, EU = null, FICHAS = [];
 const $ = s => document.querySelector(s);
@@ -85,7 +86,7 @@ function traduzErro(e) {
 }
 
 function telaLogin() {
-  $("#pag-inicio").hidden = true; $("#pag-login").hidden = false;
+  $("#pag-inicio").hidden = true; $("#pag-login").hidden = false; SMBrasa.cena("brasas");
   $("#c-nome").hidden = !modoCadastro;
   $("#login-sub").textContent = modoCadastro ? "Crie a sua conta. Ela guarda os seus personagens e as suas mesas." : "Entre com a sua conta.";
   $("#bt-login").textContent = modoCadastro ? "Criar conta" : "Entrar";
@@ -129,7 +130,7 @@ async function depoisDoLogin() {
 async function telaInicio() {
   const s = await smSessao(); if (!s) { telaLogin(); return }
   EU = s.user;
-  $("#pag-login").hidden = true; $("#pag-inicio").hidden = false;
+  $("#pag-login").hidden = true; $("#pag-inicio").hidden = false; SMBrasa.cena("d20");
   const [jog, mesas, fichas] = await Promise.all([
     sb.from("jogadores").select("nome").eq("id", EU.id).maybeSingle(),
     sb.from("mesas").select("id,nome,mestre_id").order("criado_em", { ascending: false }),
