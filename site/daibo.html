@@ -391,9 +391,18 @@ body{--x-line:var(--p-line);--x-acc:var(--p-red);--x-on:var(--p-bg);--x-bg:var(-
     pronto = (async () => {
       const s = await smExigirLogin();
       PONTE.uid = s.user.id;
-      let q = sb.from("fichas").select("id,dados").eq("dono_id", PONTE.uid);
-      const f = smParam("f");
-      q = f ? q.eq("id", f) : q.eq("dados->>pagina", PONTE.pagina);
+      /* ?ver=<linha>: o mestre vendo da sala a ficha de um jogador da mesa (só leitura; o banco só deixa se ele for o mestre) */
+      const ver = smParam("ver"), f = smParam("f");
+      let q = sb.from("fichas").select("id,dados");
+      q = ver ? q.eq("id", ver) : q.eq("dono_id", PONTE.uid);
+      if (!ver) q = f ? q.eq("id", f) : q.eq("dados->>pagina", PONTE.pagina);
+      PONTE.soVer = !!ver;
+      if (ver) {   // aviso fixo no alto: é a ficha de outra pessoa
+        const a = document.createElement("div"); a.setAttribute("role", "status");
+        a.textContent = "Você está vendo a ficha de um jogador. O que mudar aqui não é salvo.";
+        a.style.cssText = "position:sticky;top:0;z-index:50;background:#5a2a22;color:#f1ebe0;font:700 14px/1.4 system-ui,sans-serif;padding:8px 14px;text-align:center";
+        document.body.prepend(a);
+      }
       const { data, error } = await q.limit(1);
       if (error) throw error;
       if (!data || !data[0]) throw new Error("ficha não encontrada");
@@ -405,6 +414,7 @@ body{--x-line:var(--p-line);--x-acc:var(--p-red);--x-on:var(--p-bg);--x-bg:var(-
 
   async function gravarEstado(estado) {
     await preparar();
+    if (PONTE.soVer) return;   // só leitura: nada é gravado na ficha do jogador
     const dados = Object.assign({}, PONTE.linha.dados, { estado });
     const { error } = await sb.from("fichas").update({ dados, atualizado_em: new Date().toISOString() }).eq("id", PONTE.linha.id);
     if (error) throw error;

@@ -41,7 +41,23 @@ body.mestre #dica{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
 .mini.sel{border-color:var(--ink)}
 .mini .na-tela{position:absolute;left:4px;bottom:4px;font:700 10px var(--f-ui);background:var(--ink);color:var(--bg);border-radius:6px;padding:1px 5px}
 .mini.sel .na-tela{box-shadow:0 0 0 1px var(--bg)}
-#ficha{position:fixed;inset:0;z-index:3;border:0;width:100%;height:100%;background:var(--bg)}
+#ficha{position:fixed;left:0;right:0;bottom:0;top:calc(64px + env(safe-area-inset-top,0px));z-index:3;border:0;width:100%;height:calc(100% - 64px - env(safe-area-inset-top,0px));background:var(--bg)}
+/* abas da gaveta: Imagens, Mundo, Fichas */
+.abas{display:flex;border:1px solid var(--borda);border-radius:10px;overflow:hidden}
+.abas button{flex:1;border:0;background:none;color:var(--mute);font:700 14px var(--f-ui);padding:8px 6px;cursor:pointer}
+.abas button[aria-pressed="true"]{background:var(--perg);color:#1a1208}
+.mini .rot{position:absolute;left:0;right:0;bottom:0;font:700 11px/1.2 var(--f-ui);color:var(--ink);background:linear-gradient(transparent,rgba(0,0,0,.85));padding:14px 5px 4px;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mini.do-mundo{aspect-ratio:3/2}
+.minis.mundo{grid-template-columns:repeat(auto-fill,minmax(120px,1fr))}
+/* escolher um pedaço do mapa */
+#recorte{position:fixed;inset:0;z-index:8;background:var(--bg);display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:10px;
+  padding:calc(12px + env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
+#recorte .rc-topo{display:grid;gap:2px}
+#recorte .rc-topo b{font:600 20px/1.2 var(--f-disp);color:var(--titulo)}
+#rc-palco{position:relative;min-height:0;border-radius:12px;overflow:hidden;background:var(--campo);touch-action:none}
+#rc-cv{position:absolute;inset:0;width:100%;height:100%;display:block;cursor:crosshair;touch-action:none}
+#recorte .rc-acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#recorte .rc-acoes .bt:last-child{grid-column:1/-1}
 </style>
 </head>
 <body>
@@ -56,19 +72,42 @@ body.mestre #dica{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
 </div>
 <div id="dica" hidden>dois dedos para dar zoom · toque duas vezes para voltar</div>
 
-<section id="gaveta" hidden aria-label="Suas imagens">
-  <button class="alca" id="g-alca" type="button" aria-expanded="false"><i></i><span>Suas imagens</span></button>
+<section id="gaveta" hidden aria-label="Gaveta do mestre">
+  <button class="alca" id="g-alca" type="button" aria-expanded="false"><i></i><span>Imagens, mundo e fichas</span></button>
   <div id="g-corpo" hidden>
-    <div class="minis" id="g-minis"></div>
-    <p class="msg" id="g-msg" role="status"></p>
-    <button class="bt" id="bt-mostrar" type="button" disabled>Mostrar para todos</button>
-    <button class="bt sec" id="bt-enviar" type="button">Enviar imagem</button>
-    <input type="file" id="arq" accept="image/*" hidden>
+    <div class="abas" role="group" aria-label="O que abrir"><button type="button" data-aba="imagens" aria-pressed="true">Imagens</button><button type="button" data-aba="mundo" aria-pressed="false">Mundo</button><button type="button" data-aba="fichas" aria-pressed="false">Fichas</button></div>
+    <div id="aba-imagens" style="display:grid;gap:10px">
+      <div class="minis" id="g-minis"></div>
+      <p class="msg" id="g-msg" role="status"></p>
+      <button class="bt" id="bt-mostrar" type="button" disabled>Mostrar para todos</button>
+      <button class="bt sec" id="bt-enviar" type="button">Enviar imagem</button>
+      <input type="file" id="arq" accept="image/*" hidden>
+    </div>
+    <div id="aba-mundo" hidden style="display:grid;gap:10px">
+      <p class="nota" id="m-nota">Toque num mapa para mostrar inteiro ou escolher um pedaço dele.</p>
+      <div class="minis mundo" id="m-minis"></div>
+      <p class="msg" id="m-msg" role="status"></p>
+    </div>
+    <div id="aba-fichas" hidden style="display:grid;gap:10px">
+      <p class="nota">As fichas dos personagens nesta mesa. Você só vê: o que mudar não é salvo na ficha do jogador.</p>
+      <div class="lista" id="f-lista"></div>
+    </div>
   </div>
 </section>
 
+<div id="recorte" hidden role="dialog" aria-label="Mostrar um mapa do mundo">
+  <div class="rc-topo"><b id="rc-nome"></b><span class="nota" id="rc-dica">Arraste sobre o mapa para escolher um pedaço. Ou mostre o mapa inteiro.</span></div>
+  <div id="rc-palco"><canvas id="rc-cv"></canvas></div>
+  <div style="display:grid;gap:8px">
+    <p class="msg" id="rc-msg" role="status"></p>
+    <div class="rc-acoes"><button class="bt sec" id="rc-cancelar" type="button">Cancelar</button><button class="bt sec" id="rc-inteiro" type="button">Mostrar inteiro</button><button class="bt" id="rc-pedaco" type="button" disabled>Mostrar este pedaço</button></div>
+  </div>
+</div>
+
 <script src="js/supabase.js"></script>
 <script src="js/comum.js"></script>
+<script src="js/mapa-desenho.js"></script>
+<script src="js/mundo-dados.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 const M = smParam("m");
@@ -91,7 +130,7 @@ function vazio(sim, t, s) {
   $("#vazio").hidden = !sim; $("#cena").hidden = sim;
   if (sim) {
     $("#vazio-t").textContent = t || "O mestre ainda não mostrou nenhuma imagem.";
-    $("#vazio-s").textContent = s || (MESTRE ? "Abra Suas imagens, embaixo, para mostrar a primeira." : "Ela aparece aqui sozinha.");
+    $("#vazio-s").textContent = s || (MESTRE ? "Abra a gaveta, embaixo, para mostrar uma imagem ou um mapa do mundo." : "Ela aparece aqui sozinha.");
   }
 }
 let PESSOAS = 1;
@@ -150,7 +189,15 @@ $("#bt-troca").onclick = () => {
 
 /* ---------- gaveta do mestre ---------- */
 let MINIS = [];
-$("#g-alca").onclick = () => { const c = $("#g-corpo"), abrir = c.hidden; c.hidden = !abrir; $("#g-alca").setAttribute("aria-expanded", abrir); if (abrir) carregarMinis() };
+let ABA = "imagens";
+$("#g-alca").onclick = () => { const c = $("#g-corpo"), abrir = c.hidden; c.hidden = !abrir; $("#g-alca").setAttribute("aria-expanded", abrir); if (abrir) abrirAba(ABA) };
+document.querySelectorAll("[data-aba]").forEach(b => b.onclick = () => abrirAba(b.dataset.aba));
+function abrirAba(a) {
+  ABA = a;
+  document.querySelectorAll("[data-aba]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.aba === a)));
+  ["imagens", "mundo", "fichas"].forEach(k => $("#aba-" + k).hidden = k !== a);
+  if (a === "imagens") carregarMinis(); else if (a === "mundo") carregarMundo(); else carregarFichas();
+}
 async function carregarMinis() {
   const box = $("#g-minis");
   let arqs;
@@ -195,6 +242,101 @@ $("#arq").onchange = async e => {
   gMsg("Enviada. Toque em Mostrar para todos quando quiser.");
   SEL = caminho; await carregarMinis();
 };
+
+/* ---------- aba Mundo: os mapas do mundo desta mesa ---------- */
+let DM = null;   // o mundo como o mestre vê (mundo-dados.js)
+const nomeMapaSala = m => m.lugar_id ? ((DM.paginas.find(p => p.id === m.lugar_id) || {}).nome || m.nome) : (m.nome || "Mapa do mundo");
+async function carregarMundo() {
+  const box = $("#m-minis"), nota = $("#m-nota");
+  if (!DM) { box.textContent = ""; box.append(smEl("p", { class: "vazio", style: "grid-column:1/-1" }, "Abrindo o mundo…")); try { DM = await MD.carregar() } catch (e) { DM = null; box.textContent = ""; mMsg("Não consegui abrir o mundo agora. Confira a internet e tente de novo.", true); return } }
+  box.textContent = "";
+  if (!DM.mundo) { nota.textContent = "Esta mesa ainda não tem mundo. Escolha um na página da mesa, em Mundo desta mesa."; return }
+  nota.textContent = DM.mundo.nome + ": toque num mapa para mostrar inteiro ou escolher um pedaço dele.";
+  if (!DM.mapas.length) { box.append(smEl("p", { class: "vazio", style: "grid-column:1/-1" }, "Este mundo ainda não tem mapa.")); return }
+  for (const m of DM.mapas) {
+    const bt = smEl("button", { class: "mini do-mundo", type: "button", onclick: () => abrirRecorte(m) }, smEl("img", { alt: "" }), smEl("span", { class: "rot" }, nomeMapaSala(m)));
+    box.append(bt);
+    MD.imagem(m.imagem).then(u => bt.firstChild.src = u).catch(() => { });
+  }
+}
+function mMsg(t, ruim) { const m = $("#m-msg"); m.className = "msg" + (ruim ? " erro" : ""); m.textContent = t }
+
+/* escolher um pedaço: arrasta um retângulo sobre o mapa */
+let RC = null;
+function rcMsg(t, ruim) { const m = $("#rc-msg"); m.className = "msg" + (ruim ? " erro" : ""); m.textContent = t }
+async function abrirRecorte(m) {
+  RC = { m, nome: nomeMapaSala(m), img: null, sel: null, fit: null };
+  $("#recorte").hidden = false; $("#rc-nome").textContent = RC.nome; $("#rc-pedaco").disabled = true; rcMsg("Abrindo o mapa…");
+  try { const img = new Image(); img.src = await MD.imagem(m.imagem); await img.decode(); if (RC && RC.m === m) { RC.img = img; rcMsg(""); rcDesenhar() } }
+  catch (e) { rcMsg("Não consegui abrir este mapa. Tente de novo.", true) }
+}
+function fecharRecorte() { $("#recorte").hidden = true; RC = null }
+function rcDesenhar() {
+  if (!RC || !RC.img) return;
+  const cv = $("#rc-cv"), r = cv.getBoundingClientRect(), d = Math.min(devicePixelRatio || 1, 2);
+  cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d);
+  const c = cv.getContext("2d"), W = r.width, H = r.height, iw = RC.img.naturalWidth, ih = RC.img.naturalHeight, k = Math.min(W / iw, H / ih);
+  RC.fit = { x: (W - iw * k) / 2, y: (H - ih * k) / 2, k };
+  c.setTransform(d, 0, 0, d, 0, 0); c.clearRect(0, 0, W, H); c.drawImage(RC.img, RC.fit.x, RC.fit.y, iw * k, ih * k);
+  const q = RC.sel;
+  if (q) {
+    const x = Math.min(q.x0, q.x1), y = Math.min(q.y0, q.y1), w = Math.abs(q.x1 - q.x0), h = Math.abs(q.y1 - q.y0);
+    c.fillStyle = "rgba(0,0,0,.6)"; c.beginPath(); c.rect(0, 0, W, H); c.rect(x, y, w, h); c.fill("evenodd");
+    c.setLineDash([7, 5]); c.strokeStyle = "#e6d8b5"; c.lineWidth = 2; c.strokeRect(x, y, w, h); c.setLineDash([]);
+  }
+  $("#rc-pedaco").disabled = !pedacoOk();
+}
+function pedacoOk() { const q = RC && RC.sel; return !!q && Math.abs(q.x1 - q.x0) > 16 && Math.abs(q.y1 - q.y0) > 16 }
+(() => {
+  const cv = $("#rc-cv"); let arrasta = false;
+  const ponto = e => { const r = cv.getBoundingClientRect(), f = RC.fit, iw = RC.img.naturalWidth * f.k, ih = RC.img.naturalHeight * f.k;
+    return { x: Math.min(f.x + iw, Math.max(f.x, e.clientX - r.left)), y: Math.min(f.y + ih, Math.max(f.y, e.clientY - r.top)) } };
+  cv.addEventListener("pointerdown", e => { if (!RC || !RC.img) return; cv.setPointerCapture(e.pointerId); arrasta = true; const p = ponto(e); RC.sel = { x0: p.x, y0: p.y, x1: p.x, y1: p.y }; rcDesenhar() });
+  cv.addEventListener("pointermove", e => { if (!arrasta) return; const p = ponto(e); RC.sel.x1 = p.x; RC.sel.y1 = p.y; rcDesenhar() });
+  const fim = () => { if (!arrasta) return; arrasta = false; if (!pedacoOk()) RC.sel = null; rcDesenhar() };
+  cv.addEventListener("pointerup", fim); cv.addEventListener("pointercancel", fim);
+  addEventListener("resize", () => { if (RC) { RC.sel = null; rcDesenhar() } });
+})();
+$("#rc-cancelar").onclick = fecharRecorte;
+$("#rc-inteiro").onclick = async e => {
+  const b = e.currentTarget; b.disabled = true; rcMsg("Mostrando…");
+  try { const c = await MD.mostrar(RC.m, RC.nome); await mostrarImagem(c, RC.nome); fecharRecorte(); gMsg("") }
+  catch (x) { console.error(x); rcMsg("Não consegui mostrar. Confira a internet e tente de novo.", true) }
+  b.disabled = false;
+};
+$("#rc-pedaco").onclick = async e => {
+  const b = e.currentTarget; b.disabled = true; rcMsg("Preparando o pedaço…");
+  try {
+    const q = RC.sel, f = RC.fit;
+    const sx = (Math.min(q.x0, q.x1) - f.x) / f.k, sy = (Math.min(q.y0, q.y1) - f.y) / f.k, sw = Math.abs(q.x1 - q.x0) / f.k, sh = Math.abs(q.y1 - q.y0) / f.k;
+    const k = Math.min(1, 2400 / Math.max(sw, sh)), out = document.createElement("canvas");
+    out.width = Math.round(sw * k); out.height = Math.round(sh * k);
+    const c = out.getContext("2d"); c.fillStyle = "#000"; c.fillRect(0, 0, out.width, out.height); c.drawImage(RC.img, sx, sy, sw, sh, 0, 0, out.width, out.height);
+    const blob = await new Promise(r => out.toBlob(r, "image/jpeg", .9));
+    const caminho = M + "/mapas/" + smNomeArquivo(RC.nome + " pedaço", "jpg"), titulo = RC.nome + " (pedaço)";
+    rcMsg("Enviando…");
+    const up = await sb.storage.from("mesas").upload(caminho, blob, { contentType: "image/jpeg" }); if (up.error) throw up.error;
+    const { error } = await sb.from("mesas").update({ imagem_atual: caminho, imagem_titulo: titulo }).eq("id", M); if (error) throw error;
+    await mostrarImagem(caminho, titulo); fecharRecorte(); gMsg("");
+  } catch (x) { console.error(x); rcMsg("Não consegui mostrar o pedaço. Confira a internet e tente de novo.", true); b.disabled = false }
+};
+
+/* ---------- aba Fichas: o mestre abre a ficha de quem está na mesa (só para ver) ---------- */
+async function carregarFichas() {
+  const l = $("#f-lista"); l.textContent = "";
+  const { data, error } = await sb.from("fichas").select("id,nome,dono_id,pagina:dados->>pagina").eq("mesa_id", M).order("nome");
+  if (error) { l.append(smEl("p", { class: "msg erro" }, "Não consegui ler as fichas agora. Tente de novo.")); return }
+  if (!data.length) { l.append(smEl("p", { class: "vazio" }, "Nenhum personagem nesta mesa ainda.")); return }
+  const { data: jog } = await sb.from("jogadores").select("id,nome").in("id", [...new Set(data.map(f => f.dono_id))]);
+  const quem = {}; (jog || []).forEach(j => quem[j.id] = j.nome);
+  data.forEach(f => l.append(smEl("button", { class: "item", type: "button", onclick: () => abrirFicha(f) },
+    smEl("b", {}, f.nome || "Sem nome"), smEl("small", {}, f.dono_id === EU.id ? "seu personagem" : (quem[f.dono_id] || "jogador")), smEl("span", { class: "seta", "aria-hidden": "true" }, "›"))));
+}
+function abrirFicha(f) {
+  const proprio = f.dono_id === EU.id, url = (f.pagina || "criador.html") + "?embed=1&" + (proprio ? (f.pagina ? "f=" + f.id : "f=" + encodeURIComponent(f.pid || "")) : "ver=" + f.id);
+  const fr = $("#ficha"); fr.src = proprio && MINHA_FICHA ? MINHA_FICHA : url; fr.hidden = false;
+  $("#bt-troca").hidden = false; $("#bt-troca").textContent = "Mapa"; $("#gaveta").hidden = true;
+}
 
 /* ---------- entrada ---------- */
 async function entrar() {
