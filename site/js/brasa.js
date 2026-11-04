@@ -1,4 +1,4 @@
-/* Sala de Mesa: fundo animado da Brasa viva (aprovada em 04/11/2026).
+/* Mundo de UDA: fundo animado da Brasa viva (aprovada em 04/11/2026).
    SMBrasa.cena("brasas") = só as fagulhas subindo (Entrar e Mesa); SMBrasa.cena("d20") = o d20 de arame em brasa (Início);
    SMBrasa.cena(null) = sem fundo. Movimento: giro que varia sem se repetir, flutuação, mola que segue o mouse,
    empurrão na rolagem, tempo medido em segundos (igual em qualquer aparelho). Para quieto se o aparelho pede menos movimento. */

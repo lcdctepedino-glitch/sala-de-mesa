@@ -6,8 +6,8 @@
 <meta name="theme-color" content="#0b0b0d">
 <link rel="icon" href="data:,">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Sala de Mesa">
-<title>Sala de Mesa</title>
+<meta name="apple-mobile-web-app-title" content="Mundo de UDA">
+<title>Mundo de UDA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <link rel="stylesheet" href="js/base.css">
@@ -15,7 +15,7 @@
 <body>
 <main class="pag" id="pag-login" hidden style="min-height:100dvh;align-content:center;max-width:440px">
   <div class="centro" style="display:grid;gap:8px">
-    <div class="marca">Sala de Mesa</div>
+    <div class="marca">Mundo de UDA</div>
     <p class="mute" id="login-sub">Entre com o seu usuário.</p>
   </div>
   <form class="form" id="f-login" novalidate>
@@ -23,14 +23,14 @@
     <label class="campo"><span>Senha</span><input id="in-senha" type="password" autocomplete="current-password" minlength="6" required></label>
     <p class="msg" id="login-msg" role="status"></p>
     <button class="bt" id="bt-login" type="submit">Entrar</button>
-    <p class="nota centro">Não tem conta ou esqueceu a senha? Peça um link ao mestre da sua mesa.</p>
+    <p class="nota centro">Não tem conta ou esqueceu a senha? Peça um link ao Lucas.</p>
   </form>
 </main>
 
 <!-- quem abre um link de convite: cria a conta, troca o e-mail por usuário ou põe senha nova -->
 <main class="pag" id="pag-convite" hidden style="min-height:100dvh;align-content:center;max-width:440px">
   <div class="centro" style="display:grid;gap:8px">
-    <div class="marca">Sala de Mesa</div>
+    <div class="marca">Mundo de UDA</div>
     <p class="mute" id="cv-sub">Abrindo o convite…</p>
   </div>
   <form class="form" id="f-convite" novalidate hidden>
@@ -44,7 +44,7 @@
 </main>
 
 <main class="pag" id="pag-inicio" hidden>
-  <div class="topo"><div class="marca" style="font-size:30px">Sala de Mesa</div><button class="lnk" id="bt-sair" type="button">Sair</button></div>
+  <div class="topo"><div class="marca" style="font-size:30px">Mundo de UDA</div><button class="lnk" id="bt-sair" type="button">Sair</button></div>
   <p class="mute" id="ola"></p>
 
   <section>
@@ -79,6 +79,17 @@
     <div class="lista" id="l-fichas"></div>
     <a class="bt sec" href="criador.html" style="margin-top:14px">Criar ou editar personagens</a>
   </section>
+
+  <section id="s-chamar" hidden>
+    <h2>Chamar amigos</h2>
+    <p class="nota">Gere um link e mande para um amigo. Ele abre, escolhe um usuário e uma senha, e a conta fica pronta. Cada link vale para uma pessoa, por 7 dias.</p>
+    <button class="bt" id="bt-chamar" type="button" style="margin-top:14px">Chamar amigo</button>
+    <div id="chamar-res" hidden style="display:grid;gap:8px;margin-top:10px">
+      <input id="chamar-link" readonly aria-label="Link do convite">
+      <button class="bt sec" id="bt-copiar-link" type="button">Copiar link</button>
+    </div>
+    <p class="msg" id="chamar-msg" role="status" style="margin-top:8px"></p>
+  </section>
 </main>
 
 <script src="js/supabase.js"></script>
@@ -87,7 +98,8 @@
 <script>
 let EU = null, FICHAS = [], CONVITE = null;
 /* sem e-mail: o usuário vira um endereço interno que não existe. Quem ainda entra com e-mail (o Lucas) digita o e-mail mesmo. */
-const DOMINIO = "@sala-de-mesa.invalid";
+const DOMINIO = "@sala-de-mesa.invalid";   // endereço interno (não aparece para ninguém)
+const ADMIN = "bc2f6a40-d4ee-4c61-95d0-384200b4c0f6";   // quem cuida do site: só ele chama amigos pelo Início (o banco confere de novo)
 const emailDe = u => { u = String(u || "").trim(); return u.includes("@") ? u : u.toLowerCase() + DOMINIO };
 const $ = s => document.querySelector(s);
 
@@ -136,8 +148,8 @@ async function telaConvite(tok) {
   if (error || !data) { sub.textContent = "Este link não vale mais: já foi usado ou passou do prazo. Peça um novo a quem mandou."; $("#cv-voltar").hidden = false; return }
   CONVITE = { tok, ...data };
   $("#cv-c-nome").hidden = data.uso !== "novo"; $("#cv-c-usuario").hidden = data.uso === "senha";
-  if (data.uso === "novo") { sub.textContent = (data.quem || "O mestre") + " chamou você para a mesa " + (data.mesa || "") + ". Escolha um usuário e uma senha para criar a sua conta."; $("#bt-convite").textContent = "Criar conta" }
-  else if (data.uso === "migrar") { sub.textContent = "Olá, " + (data.nome || "") + ". A Sala de Mesa não usa mais e-mail. Escolha um usuário e uma senha: seus personagens continuam com você."; $("#bt-convite").textContent = "Salvar e entrar" }
+  if (data.uso === "novo") { sub.textContent = (data.quem || "O mestre") + " chamou você " + (data.mesa ? "para a mesa " + data.mesa : "para o Mundo de UDA") + ". Escolha um usuário e uma senha para criar a sua conta."; $("#bt-convite").textContent = "Criar conta" }
+  else if (data.uso === "migrar") { sub.textContent = "Olá, " + (data.nome || "") + ". O Mundo de UDA não usa mais e-mail. Escolha um usuário e uma senha: seus personagens continuam com você."; $("#bt-convite").textContent = "Salvar e entrar" }
   else { sub.textContent = "Crie uma senha nova para " + (data.usuario || data.nome || "a sua conta") + "."; $("#bt-convite").textContent = "Salvar a senha e entrar" }
   $("#f-convite").hidden = false;
   setTimeout(() => { const i = data.uso === "novo" ? $("#cv-nome") : data.uso === "migrar" ? $("#cv-usuario") : $("#cv-senha"); i.focus() }, 0);
@@ -156,6 +168,20 @@ $("#f-convite").onsubmit = async e => {
   } catch (x) { msg.className = "msg erro"; msg.textContent = traduzErro(x); bt.disabled = false }
 };
 
+/* chamar amigo: link de uso único para criar a conta */
+$("#bt-chamar").onclick = async e => {
+  const b = e.currentTarget, m = $("#chamar-msg"); b.disabled = true; m.className = "msg"; m.textContent = "";
+  const { data, error } = await sb.rpc("criar_convite", {}); b.disabled = false;
+  if (error) { m.className = "msg erro"; m.textContent = "Não consegui gerar o link. Confira a internet e tente de novo."; return }
+  $("#chamar-link").value = new URL("index.html?convite=" + data, location.href).href; $("#chamar-res").hidden = false; b.textContent = "Chamar outro amigo";
+  m.textContent = "Mande este link para um amigo. Ele vale para uma pessoa só. Para chamar mais gente, gere um link para cada um.";
+  $("#chamar-link").select();
+};
+$("#bt-copiar-link").onclick = async e => {
+  const b = e.currentTarget;
+  try { await navigator.clipboard.writeText($("#chamar-link").value); b.textContent = "Copiado" } catch (x) { b.textContent = "Selecione o link e copie" }
+  setTimeout(() => b.textContent = "Copiar link", 2500);
+};
 $("#bt-sair").onclick = async () => { await sb.auth.signOut(); EU = null; telaLogin() };
 
 async function depoisDoLogin() {
@@ -167,6 +193,7 @@ async function depoisDoLogin() {
 async function telaInicio() {
   const s = await smSessao(); if (!s) { telaLogin(); return }
   EU = s.user;
+  $("#s-chamar").hidden = EU.id !== ADMIN;
   $("#pag-login").hidden = true; $("#pag-convite").hidden = true; $("#pag-inicio").hidden = false; SMBrasa.cena("d20");
   const [jog, mesas, fichas] = await Promise.all([
     sb.from("jogadores").select("nome").eq("id", EU.id).maybeSingle(),

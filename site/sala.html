@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
 <link rel="icon" href="data:,">
-<title>Sala · Sala de Mesa</title>
+<title>Sala · Mundo de UDA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <link rel="stylesheet" href="js/base.css">
@@ -209,7 +209,7 @@ async function entrar() {
   const fx = ficha.data && ficha.data[0];
   /* ficha do criador abre pelo id do personagem; ficha sob medida (Daibo) abre a página dela pela linha */
   MINHA_FICHA = fx && (fx.pagina ? fx.pagina + "?embed=1&f=" + fx.id : fx.pid ? "criador.html?embed=1&f=" + encodeURIComponent(fx.pid) : null);
-  document.title = MESA.nome + " · Sala de Mesa";
+  document.title = MESA.nome + " · Mundo de UDA";
   $("#t-nome").textContent = MESA.nome; $("#bt-volta").href = "mesa.html?m=" + M;
   $("#bt-troca").hidden = !MINHA_FICHA;
   document.body.classList.toggle("mestre", MESTRE); $("#gaveta").hidden = !MESTRE;

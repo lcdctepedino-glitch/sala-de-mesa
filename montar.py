@@ -30,7 +30,7 @@ html = """<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">\n<link rel="icon" href="data:,">
-<title>Personagens · Sala de Mesa</title>
+<title>Personagens · Mundo de UDA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alegreya:ital,wght@0,400;0,700;1,400&family=IM+Fell+English+SC&display=swap">
 <style>

@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
 <link rel="icon" href="data:,">
-<title>Mesa · Sala de Mesa</title>
+<title>Mesa · Mundo de UDA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <link rel="stylesheet" href="js/base.css">
@@ -30,18 +30,10 @@
   </div>
 
   <section id="s-convite" hidden style="display:grid;gap:12px">
-    <h2 style="margin:0">Convite</h2>
-    <div class="caixa">
-      <button class="bt" id="bt-chamar" type="button">Chamar amigo</button>
-      <div id="chamar-res" hidden style="display:grid;gap:8px">
-        <input id="chamar-link" readonly aria-label="Link do convite">
-        <button class="bt sec" id="bt-copiar-link" type="button">Copiar link</button>
-      </div>
-      <p class="nota" id="chamar-nota">Gera um link para mandar a um amigo. Ele abre, escolhe um usuário e uma senha e já cai nesta mesa. Cada link vale para uma pessoa, por 7 dias.</p>
-    </div>
+    <h2 style="margin:0">Código da mesa</h2>
     <div class="caixa">
       <div class="codigo" id="m-cod"></div>
-      <p class="nota">Quem já tem conta entra em Início, toca em Entrar numa mesa, digita este código e escolhe o personagem.</p>
+      <p class="nota">Os jogadores entram em Início, tocam em Entrar numa mesa, digitam este código e escolhem o personagem.</p>
       <button class="bt sec" id="bt-copiar" type="button">Copiar código</button>
     </div>
   </section>
@@ -96,7 +88,7 @@ async function carregar() {
   const { data, error } = await sb.from("mesas").select("id,nome,mestre_id,codigo,mundo_id").eq("id", M).maybeSingle();
   if (error || !data) { erro("Não achei essa mesa, ou você não está nela."); $("#bt-sala").hidden = $("#bt-mundo").hidden = true; return }
   MESA = data; MESTRE = data.mestre_id === EU.id;
-  document.title = data.nome + " · Sala de Mesa";
+  document.title = data.nome + " · Mundo de UDA";
   $("#m-nome").textContent = data.nome;
   $("#bt-sala").href = "sala.html?m=" + M; $("#bt-mundo").href = "mundo.html?m=" + M;
   $("#s-convite").hidden = !MESTRE; $("#docs-mestre").hidden = !MESTRE; $("#s-apagar").hidden = !MESTRE;
@@ -134,7 +126,7 @@ async function pessoas() {
   (fichas || []).forEach(f => l.append(smEl("div", { class: "item", style: "cursor:default" }, smEl("b", {}, f.nome), smEl("small", {}, nome[f.dono_id] || ""),
     EU.id === ADMIN && f.dono_id !== EU.id ? smEl("button", { class: "mini-bt", type: "button", style: "grid-row:1/3;grid-column:2", onclick: e => linkSenha(e.currentTarget, f.dono_id, nome[f.dono_id] || f.nome) }, "Link de senha nova") : null)));
   if (!MESTRE) l.append(smEl("p", { class: "nota", style: "margin-top:8px" }, "Você vê aqui o seu personagem. As fichas dos outros jogadores ficam só com eles e com o mestre."));
-  else if (!(fichas || []).length) l.append(smEl("p", { class: "vazio" }, "Nenhum jogador entrou ainda. Toque em Chamar amigo e mande o link."));
+  else if (!(fichas || []).length) l.append(smEl("p", { class: "vazio" }, "Nenhum jogador entrou ainda. Passe o código da mesa."));
 }
 
 async function documentos() {
@@ -187,16 +179,6 @@ $("#bt-apagar").onclick = e => smConfirmar(e.currentTarget, "Toque de novo para 
     location.href = "index.html";
   } catch (x) { console.error(x); bt.disabled = false; msg.className = "msg erro"; msg.textContent = "Não consegui apagar a mesa. Confira a internet e tente de novo." }
 });
-/* chamar amigo: link de uso único para criar conta e cair nesta mesa */
-$("#bt-chamar").onclick = async e => {
-  const b = e.currentTarget, nota = $("#chamar-nota"); b.disabled = true;
-  const { data, error } = await sb.rpc("criar_convite", { p_mesa: M }); b.disabled = false;
-  if (error) { nota.className = "msg erro"; nota.textContent = "Não consegui gerar o link. Confira a internet e tente de novo."; return }
-  $("#chamar-link").value = linkDe(data); $("#chamar-res").hidden = false; b.textContent = "Chamar outro amigo";
-  nota.className = "nota"; nota.textContent = "Mande este link para um amigo. Ele vale para uma pessoa só, por 7 dias. Para chamar mais gente, gere um link para cada um.";
-  $("#chamar-link").select();
-};
-$("#bt-copiar-link").onclick = e => copiar($("#chamar-link").value, e.currentTarget, "Copiar link");
 /* esqueceu a senha: o administrador gera um link de senha nova (vale uma vez, por 7 dias) */
 async function linkSenha(bt, jogador, quem) {
   bt.disabled = true;
