@@ -23,6 +23,11 @@
   <p class="msg erro" id="m-erro" hidden></p>
   <a class="bt" id="bt-sala" href="#">Abrir a sala</a>
   <a class="bt sec" id="bt-mundo" href="#">Abrir o mundo</a>
+  <div class="caixa" id="s-mundo" hidden style="gap:8px">
+    <label class="campo"><span>Mundo desta mesa</span><select id="sel-mundo"></select></label>
+    <p class="msg" id="mundo-msg" role="status"></p>
+    <a class="lnk" href="mundos.html" style="padding:0">Criar ou editar mundos ›</a>
+  </div>
 
   <section id="s-convite" hidden>
     <h2>Convite</h2>
@@ -51,7 +56,7 @@
 
   <section id="s-apagar" hidden>
     <h2>Apagar a mesa</h2>
-    <p class="nota" style="margin-bottom:8px">Apaga a mesa, o mundo, os mapas e os documentos dela. Os personagens dos jogadores não são apagados: continuam na conta de cada um, só saem desta mesa.</p>
+    <p class="nota" style="margin-bottom:8px">Apaga a mesa, as imagens da sala, os documentos e o que os jogadores descobriram nela. O mundo continua em Meus mundos. Os personagens dos jogadores não são apagados: continuam na conta de cada um, só saem desta mesa.</p>
     <button class="bt sec" id="bt-apagar" type="button">Apagar esta mesa</button>
     <p class="msg" id="apagar-msg" role="status"></p>
   </section>
@@ -68,7 +73,7 @@ function erro(t) { const e = $("#m-erro"); e.textContent = t; e.hidden = !t }
 
 async function carregar() {
   EU = (await smExigirLogin()).user;
-  const { data, error } = await sb.from("mesas").select("id,nome,mestre_id,codigo").eq("id", M).maybeSingle();
+  const { data, error } = await sb.from("mesas").select("id,nome,mestre_id,codigo,mundo_id").eq("id", M).maybeSingle();
   if (error || !data) { erro("Não achei essa mesa, ou você não está nela."); $("#bt-sala").hidden = $("#bt-mundo").hidden = true; return }
   MESA = data; MESTRE = data.mestre_id === EU.id;
   document.title = data.nome + " · Sala de Mesa";
@@ -79,8 +84,24 @@ async function carregar() {
   $("#docs-nota").textContent = MESTRE
     ? "Documentos novos ficam só com você. Toque em Liberar para a mesa toda ver."
     : "Documentos que o mestre liberou para a mesa.";
-  await Promise.all([pessoas(), documentos()]);
+  await Promise.all([pessoas(), documentos(), MESTRE ? mundoDaMesa() : null]);
 }
+
+/* o mestre escolhe aqui qual dos seus mundos vale nesta mesa */
+async function mundoDaMesa() {
+  const { data: ws } = await sb.from("mesa_conteudo").select("id,nome").eq("tipo", "mundo").eq("dono_id", EU.id).order("nome");
+  const sel = $("#sel-mundo"); sel.textContent = "";
+  sel.append(smEl("option", { value: "" }, (ws || []).length ? "Nenhum mundo" : "Nenhum mundo (crie um em Meus mundos)"));
+  (ws || []).forEach(w => sel.append(smEl("option", { value: w.id, selected: w.id === MESA.mundo_id }, w.nome)));
+  $("#s-mundo").hidden = false;
+}
+$("#sel-mundo").onchange = async e => {
+  const m = $("#mundo-msg"), v = e.target.value || null, nome = e.target.selectedOptions[0].textContent;
+  m.className = "msg"; m.textContent = "Trocando…";
+  const { error } = await sb.from("mesas").update({ mundo_id: v }).eq("id", M);
+  if (error) { m.className = "msg erro"; m.textContent = "Não consegui trocar o mundo. Tente de novo."; e.target.value = MESA.mundo_id || ""; return }
+  MESA.mundo_id = v; m.className = "msg ok"; m.textContent = v ? "Pronto. Abrir o mundo agora mostra " + nome + "." : "Pronto. A mesa ficou sem mundo.";
+};
 
 async function pessoas() {
   const { data: fichas } = await sb.from("fichas").select("nome,dono_id").eq("mesa_id", M);
@@ -135,7 +156,7 @@ $("#arq-doc").onchange = async e => {
 $("#bt-apagar").onclick = e => smConfirmar(e.currentTarget, "Toque de novo para apagar " + MESA.nome, async () => {
   const bt = $("#bt-apagar"), msg = $("#apagar-msg"); bt.disabled = true; msg.className = "msg"; msg.textContent = "Apagando…";
   try {
-    for (const p of ["mapas", "mestre", "jogadores", "mundo"]) {
+    for (const p of ["mapas", "mestre", "jogadores"]) {
       for (let i = 0; i < 50; i++) {
         const arqs = await smListar(M + "/" + p); if (!arqs.length) break;
         const { error } = await sb.storage.from("mesas").remove(arqs.map(f => M + "/" + p + "/" + f.name)); if (error) throw error;

@@ -38,9 +38,9 @@ function smNomeArquivo(nome, ext) {
   const e = ext || (String(nome).match(/\.([A-Za-z0-9]+)$/) || [, "bin"])[1].toLowerCase();
   return Date.now() + "-" + base + "." + e;
 }
-/* O que a pessoa lê: sem a hora da frente e sem a extensão */
+/* O que a pessoa lê: sem a hora (ou a marca do desenho) da frente, sem a extensão e sem o __id do mapa desenhado */
 function smNomeLegivel(arq) {
-  return String(arq).replace(/^\d+-/, "").replace(/\.[^.]+$/, "").replace(/[-_]+/g, " ");
+  return String(arq).replace(/^\d+-/, "").replace(/\.[^.]+$/, "").replace(/__[0-9a-f]{8}$/, "").replace(/[-_]+/g, " ");
 }
 
 /* Diminui a foto antes de enviar: lado maior até 2400 px e uns 700 KB. Economiza o tráfego do mês. */

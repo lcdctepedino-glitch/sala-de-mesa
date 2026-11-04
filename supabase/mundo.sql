@@ -198,3 +198,12 @@ create policy "mesas: mestre envia" on storage.objects for insert to authenticat
 create policy "mesas: mestre muda" on storage.objects for update to authenticated
   using (bucket_id = 'mesas' and privado.eh_mestre_txt((storage.foldername(name))[1]))
   with check (bucket_id = 'mesas' and privado.eh_mestre_txt((storage.foldername(name))[1]) and (storage.foldername(name))[2] = any (array['mapas','mestre','jogadores']));
+
+-- mundos_7_jogador_sabe_a_fonte_do_mapa (04/11/2026): mundo_jogador passa a dizer se o mapa é 'desenho' ou 'imagem'
+-- e só manda o desenho (ou o caminho da imagem) do que é usado. Mesmo corpo da mundos_4, trocando o bloco 'mapas' por:
+--   'fonte', case when m.dados ->> 'fonte' = 'imagem' and m.imagem is not null then 'imagem'
+--                 when m.dados -> 'desenho' is not null then 'desenho' else 'imagem' end,
+--   'imagem', case when coalesce(m.dados ->> 'fonte', 'imagem') = 'imagem' then m.imagem end,
+--   'desenho', case when coalesce(m.dados ->> 'fonte', 'imagem') <> 'imagem' or m.imagem is null then m.dados -> 'desenho' end
+-- Na tela Mundo da mesa, estado e "na cena" são da linha 'descoberta' daquela mesa; mapa desenhado mostrado na sala
+-- vira PNG em <mesa>/mapas/<marca>-<nome>__<8 letras do id>.png (a versão anterior do mesmo mapa é apagada).

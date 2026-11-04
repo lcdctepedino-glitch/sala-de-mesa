@@ -138,6 +138,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 
 <script src="js/supabase.js"></script>
 <script src="js/comum.js"></script>
+<script src="js/mapa-desenho.js"></script>
 <script src="js/mundo-dados.js"></script>
 <script>
 const $ = s => document.querySelector(s);
@@ -160,6 +161,7 @@ const nomeMapa = m => (m.lugar_id && pg(m.lugar_id)) ? pg(m.lugar_id).nome : m.n
 const mapaVivo = m => !!m && (!S.jog || !m.lugar_id || (pg(m.lugar_id) || {}).estado === "visitado");
 const raiz = () => D.mapas.find(m => !m.lugar_id);
 const mapaDe = p => D.mapas.find(m => m.lugar_id === p.id);
+const naTela = k => !!k && !!D.mesa.imagem_atual && (D.mesa.imagem_atual === k.imagem || D.mesa.imagem_atual === k.tela);
 const GRUPO = t => /masmorra|ruína|ruina|caverna|torre|cripta/i.test(t) ? "masmorras" : /região|regiao|reino|bosque|floresta|deserto|mar/i.test(t) ? "regioes" : /^sala/i.test(t) ? "salas" : "cidades";
 
 /* mapa de cima: o mapa em que está o lugar que abre este */
@@ -222,10 +224,11 @@ function trilhaHtml(m) {
 }
 function legenda() { return mestreAgora() ? `<div class="legenda">${Object.keys(EST).map(k => `<span style="--c:${COR[k]}"><i></i>${EST[k]}</span>`).join("")}</div>` : "" }
 function degrau(k, filho) {
-  return `<button type="button" class="degrau${filho ? " filho" : ""}" data-mapa="${k.id}" aria-current="${S.mapa === k.id}"><img data-img="${esc(k.imagem)}" alt="">${mestreAgora() && D.mesa.imagem_atual === k.imagem ? `<b class="na-tela">na tela da sala</b>` : ""}<span>${esc(nomeMapa(k))}</span></button>`;
+  return `<button type="button" class="degrau${filho ? " filho" : ""}" data-mapa="${k.id}" aria-current="${S.mapa === k.id}"><img data-img="${esc(k.imagem)}" alt="">${mestreAgora() && naTela(k) ? `<b class="na-tela">na tela da sala</b>` : ""}<span>${esc(nomeMapa(k))}</span></button>`;
 }
 
 function render() {
+  if (!D.mundo) { $("#app").innerHTML = semMundo(); return }
   const m = mp(S.mapa);
   if (m && !mapaVivo(m)) S.mapa = null;
   if (!mp(S.mapa)) { const r = raiz(); S.mapa = r && mapaVivo(r) ? r.id : null }
@@ -243,15 +246,23 @@ function render() {
   $("#app").innerHTML = `<div class="o3">
    <div class="cab"><a class="volta" href="mesa.html?m=${encodeURIComponent(D.mesa.id)}" aria-label="Voltar para a mesa">‹</a>${trilhaHtml(atual)}<span class="esp"></span>
      <div class="busca"><input id="busca" type="search" placeholder="Buscar lugar, PNJ, sessão…" autocomplete="off" aria-label="Buscar"><div class="res" hidden></div></div>
-     ${chaveJog()}${mestreAgora() ? `<button type="button" class="mbt" data-nova>+ Página</button>` : ""}</div>
+     ${chaveJog()}${mestreAgora() ? `<button type="button" class="mbt" data-nova>+ Página</button><a class="mbt" href="mundos.html?w=${encodeURIComponent(D.mundo.id)}" style="text-decoration:none">Editar o mundo</a>` : ""}</div>
    <div class="mapa">${atual ? `<div data-visor style="position:absolute;inset:0"></div>` : semMapa()}<div class="sobre">${faixa}</div>${atual ? legenda() : ""}</div>
    <div class="cartas"><div class="carta"><h4>${S.edit ? (S.buf.id ? "Editando" : "Página nova") : "Selecionado"}</h4>${S.edit ? edicao() : sel ? pagina(sel) : `<p class="vazio">${atual ? "Toque num lugar do mapa." : "Nada selecionado."}</p>`}</div>
     ${mestreAgora() ? `<div class="carta"><h4>Na cena</h4>${naCena.length ? `<div class="cena">${naCena.map(p => `<a href="#" data-p="${p.id}"><span>${esc(p.nome)}</span><small>${esc(p.tipo)}</small></a>`).join("")}</div>` : `<p class="vazio" style="font-size:14px">Ninguém na cena. Marque "Na cena agora" na página de um PNJ ou monstro.</p>`}</div>` : ""}</div>
-   <div class="escada">${escada}<span class="esp" style="flex:1"></span>${mestreAgora() && atual ? `<button type="button" class="mbt forte" data-mostra ${D.mesa.imagem_atual === atual.imagem ? "disabled" : ""}>${D.mesa.imagem_atual === atual.imagem ? "Já está na tela da sala" : "Mostrar aos jogadores"}</button>` : ""}</div></div>`;
+   <div class="escada">${escada}<span class="esp" style="flex:1"></span>${mestreAgora() && atual ? `<button type="button" class="mbt forte" data-mostra ${naTela(atual) ? "disabled" : ""}>${naTela(atual) ? "Já está na tela da sala" : "Mostrar aos jogadores"}</button>` : ""}</div></div>`;
   const h = $("[data-visor]"); if (h) montaVisor(h, atual);
   ligaBusca($("#busca"));
   document.querySelectorAll("img[data-img]").forEach(carregaImg);
   if (S.edit && !S.buf.id && !S.buf.nome) setTimeout(() => { const n = $("#ed-nome"); if (n) n.focus() }, 0);
+}
+/* mesa sem mundo: o mestre escolhe um dos seus (ou vai criar); o jogador espera */
+function semMundo() {
+  const volta = `<a class="volta" href="mesa.html?m=${encodeURIComponent(D.mesa.id)}" aria-label="Voltar para a mesa">‹</a>`;
+  const meio = D.mestre
+    ? `<b>Esta mesa ainda não tem mundo</b><span>Escolha um dos seus mundos. O que os jogadores descobrirem fica guardado só nesta mesa.</span>${D.mundos.length ? `<div style="display:grid;gap:8px;width:100%">${D.mundos.map(w => `<button type="button" class="mbt forte" data-usar="${w.id}">Usar ${esc(w.nome)}</button>`).join("")}</div><a class="lnk" href="mundos.html">Criar outro mundo</a>` : `<span>Você ainda não criou nenhum mundo.</span><a class="mbt forte" href="mundos.html" style="text-decoration:none">Criar um mundo</a>`}`
+    : `<b>O mestre ainda não escolheu o mundo</b><span>Quando ele escolher, os lugares que vocês descobrirem aparecem aqui.</span>`;
+  return `<div class="o3" style="grid-template-rows:auto minmax(0,1fr)"><div class="cab">${volta}<nav class="trilha"><b>${esc(D.mesa.nome)}</b></nav></div><div class="mapa" style="grid-column:1/-1"><div class="sem-mapa"><div>${meio}</div></div></div></div>`;
 }
 function semMapa() {
   return `<div class="sem-mapa"><div>${mestreAgora()
@@ -395,6 +406,8 @@ $("#arq").onchange = async e => {
 };
 
 $("#app").addEventListener("click", async e => {
+  const usar = e.target.closest("[data-usar]");
+  if (usar) { usar.disabled = true; try { await MD.usarMundo(usar.dataset.usar); await iniciar(); MD.avisar() } catch (x) { usar.disabled = false; falhou(x, "escolher o mundo") } return }
   const el = e.target.closest("[data-p],[data-novo],[data-ciclo],[data-abre],[data-mapa],[data-jog],[data-mostra],[data-editar],[data-cancelar],[data-apagar],[data-nova],[data-marcar],[data-marcar-pag],[data-cancela-marcar],[data-tirar],[data-envia-mapa],[data-apaga-mapa],[data-envia-raiz]");
   if (!el || el.matches("input")) return;
   if (el.matches(".pin") && el.closest(".vp") && e.detail) return;   // toque de mouse no alfinete já é tratado pelo visor
@@ -411,7 +424,7 @@ $("#app").addEventListener("click", async e => {
   if (d.jog !== undefined) { S.jog = !S.jog; S.edit = false; S.buf = null; S.marcar = false; render(); return }
   if (d.mostra !== undefined) {
     const m = mp(S.mapa);
-    try { await MD.mostrar(m, nomeMapa(m)); D.mesa.imagem_atual = m.imagem; aviso("Os jogadores agora veem na sala: " + nomeMapa(m)) } catch (x) { falhou(x, "mostrar o mapa") }
+    try { D.mesa.imagem_atual = await MD.mostrar(m, nomeMapa(m)); aviso("Os jogadores agora veem na sala: " + nomeMapa(m)) } catch (x) { falhou(x, "mostrar o mapa") }
     render(); return;
   }
   if (d.editar !== undefined) { editar(pg(S.pag)); return }
@@ -450,7 +463,7 @@ $("#app").addEventListener("click", async e => {
     });
     return;
   }
-  if (d.enviaRaiz !== undefined) { pedirImagem(async f => { const m = await MD.criarMapa(f, "Mundo", null); D.mapas.push(m); S.mapa = m.id; MD.avisar(); aviso("Mapa enviado. Toque em + Marcar lugar para pôr o primeiro lugar."); render() }) }
+  if (d.enviaRaiz !== undefined) { pedirImagem(async f => { const m = await MD.criarMapa(f, "Mapa do mundo", null); D.mapas.push(m); S.mapa = m.id; MD.avisar(); aviso("Mapa enviado. Toque em + Marcar lugar para pôr o primeiro lugar."); render() }) }
 });
 $("#app").addEventListener("input", e => { if (S.edit && e.target.closest("form[data-form]")) lerForm() });
 $("#app").addEventListener("submit", e => { e.preventDefault(); salvar(false).then(ok => { if (ok) render() }) });
