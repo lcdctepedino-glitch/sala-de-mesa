@@ -207,3 +207,16 @@ create policy "mesas: mestre muda" on storage.objects for update to authenticate
 --   'desenho', case when coalesce(m.dados ->> 'fonte', 'imagem') <> 'imagem' or m.imagem is null then m.dados -> 'desenho' end
 -- Na tela Mundo da mesa, estado e "na cena" são da linha 'descoberta' daquela mesa; mapa desenhado mostrado na sala
 -- vira PNG em <mesa>/mapas/<marca>-<nome>__<8 letras do id>.png (a versão anterior do mesmo mapa é apagada).
+
+-- ===================================================================================================
+-- mundos_8_continentes (05/11/2026): continentes no mapa do mundo desenhado.
+-- O mapa (tipo 'mapa', sem lugar_id) guarda dados.continentes = [{id, nome, pontos:[{x,y}]}] (x,y de 0 a 1).
+-- Cada página no mapa guarda dados.continente = id (o criador e a tela Mundo acertam ao gravar).
+-- mundo_jogador passou a mandar, no mapa do mundo, 'continentes' com id e pontos de todos (para repartir a terra)
+-- e o nome só dos descobertos: algum lugar do continente que não é 'oculto' nesta mesa.
+-- Feito com CREATE OR REPLACE (sem DROP). A função inteira está no banco; o trecho novo é:
+--   'continentes', case when m.lugar_id is null and jsonb_typeof(m.dados -> 'continentes') = 'array' then
+--     (select coalesce(jsonb_agg(jsonb_build_object('id', c -> 'id', 'pontos', c -> 'pontos',
+--        'nome', case when exists (select 1 from est e where e.est <> 'oculto' and e.mapa_id = m.id
+--                                    and e.dados ->> 'continente' = c ->> 'id') then c -> 'nome' end)), '[]')
+--      from jsonb_array_elements(m.dados -> 'continentes') c) end

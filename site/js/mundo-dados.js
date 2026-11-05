@@ -5,7 +5,8 @@
 const MD = (() => {
   const M = smParam("m");
   let CANAL = null, W = null, DESC = {};
-  const REND = {}, URLS = {};
+  const REND = {}, URLS = {}, RAIZ = {}, REGS = {};   // RAIZ: mapa do mundo desenhado (desenho e continentes)
+  let CONTPAG = {}, MESTRE = false;   // continente de cada página (só o mestre lê as páginas inteiras)
   const ok = r => { if (r.error) throw r.error; return r.data };
   const slug = s => String(s || "mapa").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50) || "mapa";
 
@@ -14,7 +15,7 @@ const MD = (() => {
     const mesa = ok(await sb.from("mesas").select("id,nome,mestre_id,imagem_atual,mundo_id").eq("id", M).maybeSingle());
     if (!mesa) throw new Error("sem mesa");
     const mestre = mesa.mestre_id === eu.id;
-    W = mesa.mundo_id; DESC = {};
+    W = mesa.mundo_id; DESC = {}; CONTPAG = {}; MESTRE = mestre;
     let mapas = [], paginas = [], seg = {}, mundo = null, mundos = [];
     if (mestre) {
       mundos = ok(await sb.from("mesa_conteudo").select("id,nome").eq("tipo", "mundo").eq("dono_id", eu.id).order("nome"));
@@ -24,6 +25,7 @@ const MD = (() => {
           sb.from("mesa_conteudo").select("id,lugar_id,estado,na_cena").eq("tipo", "descoberta").eq("mesa_id", M)]);
         ok(desc).forEach(d => DESC[d.lugar_id] = d);
         const ls = ok(linhas);
+        ls.filter(l => l.tipo === "pagina").forEach(l => CONTPAG[l.id] = (l.dados || {}).continente || null);
         mundo = mundos.find(x => x.id === W) || { id: W, nome: "Mundo" };
         mapas = ls.filter(l => l.tipo === "mapa").map(paraTelaMapa).filter(Boolean);
         paginas = ls.filter(l => l.tipo === "pagina").map(paraTela).sort((a, b) => a.nome.localeCompare(b.nome, "pt"));
@@ -46,11 +48,41 @@ const MD = (() => {
     if (fonte === "desenho") {
       if (!des) return null;
       const ehP = !!r.lugar_id, [w, h] = dimsDoDesenho(ehP, des), marca = marcaDesenho(des), chave = "desenho:" + r.id + ":" + marca;
-      REND[chave] = { ehP, des };
-      return { ...base, imagem: chave, largura: w, altura: h, desenhado: true, tela: M + "/mapas/" + marca + "-" + slug(r.nome) + "__" + r.id.slice(0, 8) + ".png" };
+      const continentes = !ehP ? (dd.continentes || r.continentes || []) : [];   // do jogador: os não descobertos vêm sem nome
+      REND[chave] = { ehP, des, id: r.id, continentes };
+      if (!ehP) { RAIZ[r.id] = { des, continentes, marca }; delete REGS[r.id] }
+      return { ...base, imagem: chave, largura: w, altura: h, desenhado: true, continentes, nomeArq: slug(r.nome) };
     }
     if (!r.imagem) return null;
     return { ...base, imagem: r.imagem, largura: r.largura, altura: r.altura };
+  }
+
+  /* repartição da terra do mapa do mundo (guardada até o mapa mudar) */
+  function regiao(id) {
+    const R = RAIZ[id]; if (!R || !R.continentes.length) return null;
+    if (!REGS[id]) REGS[id] = regioesMundo(mundoDoDesenho(R.des).mapa, R.continentes);
+    return REGS[id];
+  }
+  /* continentes que esta mesa já descobriu: algum lugar dele deixou de ser oculto */
+  function vistos(id) {
+    const R = RAIZ[id]; if (!R) return [];
+    if (!MESTRE) return R.continentes.filter(c => c.nome);   // o jogador já recebe sem nome os que não descobriu
+    const ja = new Set(Object.keys(CONTPAG).filter(p => CONTPAG[p] && DESC[p] && DESC[p].estado && DESC[p].estado !== "oculto").map(p => CONTPAG[p]));
+    return R.continentes.filter(c => c.nome && ja.has(c.id));
+  }
+  /* nome do arquivo da tela da sala: muda quando o desenho ou os nomes descobertos mudam */
+  function tela(m) {
+    if (!m.desenhado) return null;
+    const { des } = REND[m.imagem], nomes = m.lugar_id ? [] : vistos(m.id).map(c => [c.id, c.nome]);
+    return M + "/mapas/" + marcaDesenho(nomes.length ? { des, nomes } : des) + "-" + m.nomeArq + "__" + m.id.slice(0, 8) + ".png";
+  }
+  /* a página ganha (ou perde) o continente do ponto onde está no mapa do mundo */
+  async function acertaContinente(row) {
+    const reg = row.mapa_id && row.x != null ? regiao(row.mapa_id) : null, ct = reg ? continenteEm(reg, row.x, row.y) : null, d = row.dados || {};
+    CONTPAG[row.id] = ct;
+    if ((d.continente || null) === ct) return row;
+    const { continente, ...resto } = d;
+    return ok(await sb.from("mesa_conteudo").update({ dados: ct ? { ...resto, continente: ct } : resto }).eq("id", row.id).select().single());
   }
 
   const CAMPOS = ["nome", "texto", "mapa_id", "x", "y"];
@@ -62,6 +94,7 @@ const MD = (() => {
     if (!p.id) row = ok(await sb.from("mesa_conteudo").insert({ ...linha, tipo: "pagina", mundo_id: W, categoria: linha.categoria || "Lugar" }).select().single());
     else if (Object.keys(linha).length) row = ok(await sb.from("mesa_conteudo").update(linha).eq("id", p.id).select().single());
     else row = ok(await sb.from("mesa_conteudo").select("*").eq("id", p.id).single());
+    if ("x" in p || "mapa_id" in p || !p.id) row = await acertaContinente(row);
     if ("estado" in p || "na_cena" in p) await descoberta(row.id, p);
     return paraTela(row);
   }
@@ -106,8 +139,8 @@ const MD = (() => {
   async function mostrar(m, nome) {
     let caminho = m.imagem;
     if (m.desenhado) {
-      const { ehP, des } = REND[m.imagem], blob = await desenhoParaPNG(ehP, des, 2);
-      caminho = m.tela;
+      const { ehP, des, continentes } = REND[m.imagem], blob = await desenhoParaPNG(ehP, des, 2, ehP ? null : vistos(m.id), continentes);
+      caminho = tela(m);
       ok(await sb.storage.from("mesas").upload(caminho, blob, { contentType: "image/png", upsert: true }));
       try {
         const fim = "__" + m.id.slice(0, 8) + ".png", nomeNovo = caminho.split("/").pop();
@@ -121,13 +154,15 @@ const MD = (() => {
 
   async function usarMundo(id) { ok(await sb.from("mesas").update({ mundo_id: id }).eq("id", M)) }
 
-  async function imagem(c) {
+  /* semNomes: a tela Mundo escreve os nomes dos continentes por cima (mudam com o zoom); a sala os quer na imagem */
+  async function imagem(c, semNomes) {
     if (!String(c).startsWith("desenho:")) return smImagem(c);
-    if (!URLS[c]) { const { ehP, des } = REND[c]; URLS[c] = URL.createObjectURL(await desenhoParaPNG(ehP, des, ehP ? 3 : 2)) }
-    return URLS[c];
+    const k = c + (semNomes ? ":s" : "");
+    if (!URLS[k]) { const { ehP, des, id, continentes } = REND[c]; URLS[k] = URL.createObjectURL(await desenhoParaPNG(ehP, des, ehP ? 3 : 2, ehP || semNomes ? null : vistos(id), continentes)) }
+    return URLS[k];
   }
   function ouvir(cb) { CANAL = sb.channel("mundo-" + M).on("broadcast", { event: "mudou" }, cb).subscribe() }
   function avisar() { if (CANAL) CANAL.send({ type: "broadcast", event: "mudou", payload: {} }) }
 
-  return { M, carregar, salvarPagina, salvarSegredo, apagarPagina, criarMapa, apagarMapa, mostrar, usarMundo, imagem, ouvir, avisar };
+  return { M, carregar, salvarPagina, salvarSegredo, apagarPagina, criarMapa, apagarMapa, mostrar, usarMundo, imagem, ouvir, avisar, tela, regiao };
 })();
