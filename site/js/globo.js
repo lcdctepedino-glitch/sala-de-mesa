@@ -151,7 +151,9 @@ const SMGlobo = (() => {
     const an = renderer.capabilities.getMaxAnisotropy(), T = a => dados(a, TW, TH, an);
     return { cor: T(cd), luz: T(ed), rug: T(rd), nor: T(nd), alt: T(hd), ids, altArr: alt, peso, TW, TH };
   }
-  function dados(a, W, H, an) { const t = new THREE.DataTexture(a, W, H, THREE.RGBAFormat); t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.anisotropy = an || 1; t.needsUpdate = true; return t }
+  function dados(a, W, H, an) { const t = new THREE.DataTexture(a, W, H, THREE.RGBAFormat); t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.anisotropy = an || 1; t.needsUpdate = true;
+    t.onUpdate = () => { t.image = { width: W, height: H, data: null } };   // já está na placa de vídeo: solta a cópia (o iPhone tem pouca memória)
+    return t }
   function nuvensDados(W, H) {
     const d = new Uint8Array(W * H * 4);
     for (let py = 0; py < H; py++) { const th = (py + .5) / H * Math.PI, s = Math.sin(th), cy = Math.cos(th), lat = 90 - (py + .5) / H * 180, faixa = .8 + .2 * Math.cos(lat * Math.PI / 26);
@@ -201,6 +203,7 @@ const SMGlobo = (() => {
         pontos.forEach(([px, py, h], n) => { const d = dirLL(90 - (py + .5) / TX.TH * 180, (px + .5) / TX.TW * 360 - 180); qq.setFromUnitVectors(cima, d); const s = .7 + rnd() * .7; e.set(s, s * (.8 + rnd() * .5), s);
           m.compose(d.clone().multiplyScalar(1 + h * DISP - .0005), qq, e); arvores.setMatrixAt(n, m) });
         arvores.visible = false; giro.add(arvores) } }
+    TX.peso = TX.altArr = null;
     if (q.estrelas) { const n = 1800, pos = new Float32Array(n * 3); for (let i = 0; i < n; i++) { const u = Math.random() * 2 - 1, a = Math.random() * Math.PI * 2, r = Math.sqrt(1 - u * u); pos[i * 3] = r * Math.cos(a) * 50; pos[i * 3 + 1] = u * 50; pos[i * 3 + 2] = r * Math.sin(a) * 50 }
       const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3)); sc.add(new THREE.Points(g, new THREE.PointsMaterial({ color: 0xcfe3ff, size: 1.2, sizeAttenuation: false, transparent: true, opacity: .6, depthWrite: false }))) }
     // de frente para o meio do mapa
@@ -208,17 +211,22 @@ const SMGlobo = (() => {
     return { renderer, sc, cam, pivo, giro, globo, nuvens, rede, arvores, TX, DISP, uTempo, yaw0: Math.atan2(-meio.x, meio.z) + .75 };
   }
 
+  let CHEIA = null;
+  function liberar(C) { if (!C) return; C.sc.traverse(o => { if (o.geometry) o.geometry.dispose(); const ms = o.material ? [].concat(o.material) : [];
+      ms.forEach(m => { for (const k in m) if (m[k] && m[k].isTexture) m[k].dispose(); m.dispose() }) });
+    C.renderer.dispose(); try { C.renderer.forceContextLoss() } catch (e) { } }
+
   /* ---------- o globo pequeno do Início: só gira e flutua; pausa fora da tela ---------- */
   function mini(canvas, info) {
     const P = preparar(info), Q = { TW: 1024, TH: 512, seg: 160, arvores: 0, estrelas: false }, caixa = canvas.parentElement;
-    let C = cena(canvas, P, Q), vivo = true, visto = true, ult = 0, yaw = C.yaw0, base = 4;
-    const medir = () => { if (!C) return; const w = canvas.clientWidth || 300, h = canvas.clientHeight || 260; C.renderer.setSize(w, h, false); C.cam.aspect = w / h; C.cam.updateProjectionMatrix();
+    const C = cena(canvas, P, Q); let vivo = true, visto = true, ult = 0, yaw = C.yaw0, base = 4;
+    const medir = () => { const w = canvas.clientWidth || 300, h = canvas.clientHeight || 260; C.renderer.setSize(w, h, false); C.cam.aspect = w / h; C.cam.updateProjectionMatrix();
       const t = Math.tan(C.cam.fov * Math.PI / 360); base = Math.max(1 / (.84 * t), 1 / (.84 * t * C.cam.aspect)) };
     medir(); addEventListener("resize", medir);
     new IntersectionObserver(es => { visto = es[0].isIntersecting; if (visto && vivo) requestAnimationFrame(quadro) }).observe(caixa);
     document.addEventListener("visibilitychange", () => { if (!document.hidden && vivo && visto) requestAnimationFrame(quadro) });
     function quadro(ms) {
-      if (!vivo || !visto || document.hidden || !C) return;
+      if (!vivo || !visto || document.hidden) return;
       const t = ms / 1000, dt = Math.min(.05, t - (ult || t)); ult = t; C.uTempo.value = t;
       if (!RM) yaw += dt * .09;
       C.giro.rotation.y = yaw; C.pivo.rotation.x = .24; C.nuvens.rotation.y = yaw + t * .005; C.pivo.position.y = RM ? 0 : Math.sin(t * .6) * .03;
@@ -226,25 +234,22 @@ const SMGlobo = (() => {
       if (!RM) requestAnimationFrame(quadro);
     }
     requestAnimationFrame(quadro);
-    return { P,
-      /* a tela cheia precisa da memória do aparelho: o pequeno solta o 3D dele e monta de novo na volta */
-      pausar() { vivo = false; if (!C) return; C.renderer.dispose(); try { C.renderer.forceContextLoss() } catch (e) { } C = null; const n = canvas.cloneNode(false); canvas.replaceWith(n); canvas = n },
-      seguir() { if (vivo) return; vivo = true; ult = 0; try { if (!C) { C = cena(canvas, P, Q); medir() } } catch (e) { console.error(e); return } requestAnimationFrame(quadro) } };
+    return { P, pausar() { vivo = false }, seguir() { if (vivo) return; vivo = true; ult = 0; requestAnimationFrame(quadro) } };
   }
 
   /* ---------- a tela cheia: arrastar com embalo, aproximar, clicar numa terra, chegar perto ---------- */
   function abrir(el, P, nomeMundo, aoFechar) {
     const $ = s => el.querySelector(s), sobre = $(".gt-sobre"), cartao = $(".gt-cartao"), dica = $(".gt-dica"), aviso = $(".gt-aviso");
     const TOQUE = matchMedia("(pointer: coarse)").matches;
-    // canvas novo a cada abertura: o da vez anterior teve o 3D desligado ao fechar e não volta
-    let tela = $(".gt-gl"); { const n = tela.cloneNode(false); tela.replaceWith(n); tela = n }
+    // o planeta da tela cheia é montado uma vez só e guardado: refazer a cada abertura estourava a memória do iPhone
+    let tela = $(".gt-gl"); const reusar = !!(CHEIA && CHEIA.P === P && CHEIA.tela === tela);
+    if (!reusar) { if (CHEIA) { liberar(CHEIA.C); CHEIA = null } const n = tela.cloneNode(false); tela.replaceWith(n); tela = n }
     $(".gt-nome").textContent = nomeMundo || "Mundo de UDA";
     $(".gt-vazio").hidden = P.pecas.length > 0;
     dica.textContent = TOQUE ? "Arraste para girar · dois dedos aproximam · toque numa terra" : "Arraste para girar · role para aproximar · clique numa terra";
     dica.classList.remove("some"); cartao.dataset.aberto = "nao"; aviso.classList.remove("some"); sobre.textContent = "";
     let C = null, vivo = true;
-    const fechar = () => { vivo = false; removeEventListener("resize", medir); removeEventListener("keydown", tecla);
-      if (C) { C.renderer.dispose(); try { C.renderer.forceContextLoss() } catch (e) { } C = null } aoFechar && aoFechar() };
+    const fechar = () => { if (!vivo) return; vivo = false; removeEventListener("resize", medir); removeEventListener("keydown", tecla); aoFechar && aoFechar() };
     const tecla = e => { if (e.key === "Escape") { if (modo !== "mundo") voltar(); else fechar() } };
     addEventListener("keydown", tecla);
     let yaw = 0, pitch = .22, vyaw = 0, vpitch = 0, tYaw = 0, tPitch = 0, indo = false, modo = "mundo", foco = null, zoomUser = 1, dist = 7, base = 4.4, ultimoToque = -10, agora = 0, comRede = true, comNuvens = true, opN = .55, LW = 1, LH = 1;
@@ -281,7 +286,8 @@ const SMGlobo = (() => {
       const niveis = leve ? [{ TW: 2048, TH: 1024, seg: 320, arvores: 9000, estrelas: true }, { TW: 1024, TH: 512, seg: 256, arvores: 5000, estrelas: true }]
         : [{ TW: 2048, TH: 1024, seg: 512, arvores: 14000, estrelas: true }, { TW: 1024, TH: 512, seg: 256, arvores: 6000, estrelas: true }];
       let erro = null;
-      for (const q of niveis) { try { C = cena(tela, P, q); erro = null; break } catch (e) { erro = e; console.error(e) } }
+      if (reusar) C = CHEIA.C;
+      else for (const q of niveis) { try { C = cena(tela, P, q); CHEIA = { C, P, tela }; erro = null; break } catch (e) { erro = e; console.error(e) } }
       if (!C) { aviso.innerHTML = 'Não consegui abrir o mundo em 3D neste aparelho.<br><small style="opacity:.7;font-size:12px"></small>'; aviso.querySelector("small").textContent = String(erro && (erro.message || erro)).slice(0, 160); return }
       yaw = C.yaw0; addEventListener("resize", medir); medir(); dist = base * 1.3; aviso.classList.add("some"); requestAnimationFrame(quadro);
     }, 60);
