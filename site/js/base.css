@@ -1,5 +1,5 @@
 /* Sala de Mesa: visual Brasa viva (aprovado em 04/11/2026). Preto puro, pergaminho e brasa. Um só visual, não muda com o tema do aparelho.
-   Entrar e Mesa: só as brasas, conteúdo no centro. Início: o d20 em brasa. O fundo animado vem de js/brasa.js. */
+   Desde 06/11/2026: Entrar e Mesa com um sombreado parado (js/brasa.js, sem fagulhas); Início com o mundo em 3D no topo (js/globo.js). */
 :root{
   --bg:#000; --ink:#f1ebe0; --mute:#b2a894; --line:rgba(230,216,181,.14); --card:#140d07; --campo:#150e08; --borda:rgba(230,216,181,.2);
   --erro:#ff9a6a; --ok:#b9d3a6; --perg:#e6d8b5; --brasa:#ffb070; --titulo:#f6ecd6;
@@ -48,7 +48,4 @@ input:focus-visible,select:focus-visible,button:focus-visible,a:focus-visible{ou
 @media (max-width:480px){.marca{font-size:44px}}
 /* cena "centro" (Entrar e Mesa): coluna no meio da tela */
 .centro{text-align:center}
-/* cena "d20" (Início): no largo o conteúdo vai para a esquerda e o dado fica à direita; no estreito o dado fica no alto */
-@media (min-width:1000px){body[data-cena="d20"] .pag{margin-left:max(48px,6vw)}}
-@media (max-width:999px){body[data-cena="d20"] .pag{padding-top:150px}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

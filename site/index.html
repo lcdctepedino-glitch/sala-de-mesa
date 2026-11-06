@@ -11,6 +11,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
 <link rel="stylesheet" href="js/base.css">
+<link rel="stylesheet" href="js/globo.css">
 </head>
 <body>
 <main class="pag" id="pag-login" hidden style="min-height:100dvh;align-content:center;max-width:440px">
@@ -45,6 +46,7 @@
 
 <main class="pag" id="pag-inicio" hidden>
   <div class="topo"><div class="marca" style="font-size:30px">Mundo de UDA</div><button class="lnk" id="bt-sair" type="button">Sair</button></div>
+  <button class="globo-mini" id="bt-globo" type="button" aria-label="Abrir o mundo em 3D"><canvas id="globo-mini" aria-hidden="true"></canvas><span class="globo-legenda" id="globo-legenda">Toque para explorar o mundo</span></button>
   <p class="mute" id="ola"></p>
 
   <section>
@@ -92,9 +94,33 @@
   </section>
 </main>
 
+<!-- o mundo em tela cheia (abre pelo globo do Início) -->
+<div class="gt" id="globo-tela" hidden role="dialog" aria-modal="true" aria-label="Mundo em 3D">
+  <canvas class="gt-gl" role="img" aria-label="Mundo em 3D. Arraste para girar e toque numa terra."></canvas>
+  <div class="gt-sobre"></div>
+  <header class="gt-barra">
+    <b class="gt-nome">Mundo de UDA</b>
+    <div class="gt-grupo">
+      <button type="button" class="gt-rede" aria-pressed="true">Rede</button>
+      <button type="button" class="gt-nuvens" aria-pressed="true">Nuvens</button>
+      <button type="button" class="gt-fechar">Fechar</button>
+    </div>
+  </header>
+  <p class="gt-vazio" hidden>Ainda não há um mundo desenhado. Crie o seu em <a href="mundos.html">Meus mundos</a>: as terras aparecem aqui.</p>
+  <aside class="gt-cartao" data-aberto="nao" aria-live="polite">
+    <div><p class="gt-olho">Terra</p><h2 class="gt-titulo">—</h2><p class="gt-coord"></p></div>
+    <ul class="gt-compo"></ul>
+    <div class="gt-botoes"><button type="button" class="gt-perto">Chegar perto</button><button type="button" class="gt-volta">Ver o mundo</button></div>
+  </aside>
+  <p class="gt-dica"></p>
+  <p class="gt-aviso">Erguendo montanhas…</p>
+</div>
+
 <script src="js/supabase.js"></script>
 <script src="js/comum.js"></script>
 <script src="js/brasa.js"></script>
+<script src="js/three.min.js"></script>
+<script src="js/globo.js"></script>
 <script>
 let EU = null, FICHAS = [], CONVITE = null;
 /* sem e-mail: o usuário vira um endereço interno que não existe. Quem ainda entra com e-mail (o Lucas) digita o e-mail mesmo. */
@@ -194,7 +220,7 @@ async function telaInicio() {
   const s = await smSessao(); if (!s) { telaLogin(); return }
   EU = s.user;
   $("#s-chamar").hidden = EU.id !== ADMIN;
-  $("#pag-login").hidden = true; $("#pag-convite").hidden = true; $("#pag-inicio").hidden = false; SMBrasa.cena("d20");
+  $("#pag-login").hidden = true; $("#pag-convite").hidden = true; $("#pag-inicio").hidden = false; SMBrasa.cena("brasas");
   const [jog, mesas, fichas] = await Promise.all([
     sb.from("jogadores").select("nome").eq("id", EU.id).maybeSingle(),
     sb.from("mesas").select("id,nome,mestre_id").order("criado_em", { ascending: false }),
@@ -218,6 +244,8 @@ async function telaInicio() {
   else FICHAS.forEach(f => lf.append(smEl("a", { class: "item", href: f.pagina ? f.pagina + "?f=" + f.id : "criador.html?f=" + encodeURIComponent(f.pid || "") },
     smEl("b", {}, f.nome || "Sem nome"), smEl("small", {}, f.mesa_id ? "Na mesa " + (nomeMesa[f.mesa_id] || "") : "Sem mesa"), smEl("span", { class: "seta", "aria-hidden": "true" }, "›"))));
 
+  montarGlobo(mesas.data || []);
+
   const sel = $("#in-ficha"); sel.textContent = "";
   FICHAS.forEach(f => sel.append(smEl("option", { value: f.id }, (f.nome || "Sem nome") + (f.mesa_id ? " (já está em " + (nomeMesa[f.mesa_id] || "outra mesa") + ")" : ""))));
   /* chegou pelo convite com o código da mesa: já abre "Entrar numa mesa" preenchido */
@@ -227,6 +255,29 @@ async function telaInicio() {
     const m = $("#entrar-msg"); m.className = "msg"; m.textContent = FICHAS.length ? "Escolha o personagem e toque em Entrar." : "Sua conta está pronta. Para entrar na mesa, crie primeiro um personagem em Criar ou editar personagens e volte aqui: o código da mesa é " + cod + ".";
   }
 }
+
+/* o mundo do Início: o pequeno gira no topo; o toque abre a tela cheia (o botão Voltar do celular fecha) */
+let GLOBO = null, GLOBO_INFO = null, GLOBO_ABERTO = null;
+async function montarGlobo(mesas) {
+  if (GLOBO) return;
+  if (!window.THREE || typeof SMGlobo === "undefined") { $("#bt-globo").hidden = true; return }   // sem 3D neste aparelho: o resto do Início segue igual
+  GLOBO_INFO = await SMGlobo.carregarDoInicio(EU, mesas);
+  $("#globo-legenda").textContent = GLOBO_INFO ? GLOBO_INFO.nome + " · toque para explorar" : "Toque para ver o mundo";
+  try { GLOBO = SMGlobo.mini($("#globo-mini"), GLOBO_INFO) } catch (e) { console.error(e); $("#bt-globo").hidden = true }
+}
+function fecharGlobo() {
+  if (!GLOBO_ABERTO) return;
+  GLOBO_ABERTO = null; $("#globo-tela").hidden = true; document.documentElement.style.overflow = ""; if (GLOBO) GLOBO.seguir(); $("#bt-globo").focus();
+}
+$("#bt-globo").onclick = () => {
+  if (!GLOBO || GLOBO_ABERTO) return;
+  GLOBO.pausar(); $("#globo-tela").hidden = false; document.documentElement.style.overflow = "hidden";
+  history.pushState({ globo: 1 }, "", "#mundo");
+  GLOBO_ABERTO = SMGlobo.abrir($("#globo-tela"), GLOBO.P, GLOBO_INFO ? GLOBO_INFO.nome : "Mundo de UDA", () => { if (history.state && history.state.globo) history.back(); else fecharGlobo() });
+  setTimeout(() => $("#globo-tela .gt-fechar").focus(), 0);
+};
+addEventListener("popstate", () => { if (GLOBO_ABERTO) GLOBO_ABERTO.fechar() });   // fechar libera o 3D e volta por aoFechar
+if (location.hash === "#mundo") history.replaceState(null, "", location.pathname + location.search);
 
 $("#bt-entrar").onclick = () => { $("#f-abrir").hidden = true; $("#f-entrar").hidden = !$("#f-entrar").hidden;
   $("#entrar-msg").className = "msg"; $("#entrar-msg").textContent = FICHAS.length ? "" : "Antes de entrar, crie um personagem em \"Criar ou editar personagens\".";

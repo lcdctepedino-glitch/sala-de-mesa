@@ -1,0 +1,48 @@
+/* Mundo de UDA: o globo do Início (js/globo.js). O pequeno fica no topo da página e rola junto com ela; o toque abre a tela cheia. */
+.globo-mini{position:relative;display:block;width:100%;height:clamp(240px,64vw,330px);margin:-6px 0 -10px;padding:0;border:0;background:none;cursor:pointer;border-radius:18px;-webkit-tap-highlight-color:transparent}
+.globo-mini canvas{position:absolute;inset:0;width:100%;height:100%;display:block;pointer-events:none}
+.globo-mini .globo-legenda{position:absolute;left:50%;bottom:6px;transform:translateX(-50%);white-space:nowrap;font-size:13px;color:var(--mute);background:rgba(0,0,0,.55);border:1px solid rgba(124,200,255,.18);border-radius:999px;padding:6px 13px}
+.globo-mini:hover .globo-legenda,.globo-mini:focus-visible .globo-legenda{color:var(--ink);border-color:rgba(124,200,255,.45)}
+.globo-mini:focus-visible{outline:2px solid #7cc8ff;outline-offset:2px}
+
+.gt{position:fixed;inset:0;z-index:50;background:radial-gradient(ellipse at 50% 50%,#04101f 0%,#01060e 55%,#000 100%);color:#eef3f8;overflow:hidden}
+.gt-gl{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+.gt-gl.arrasta{cursor:grabbing}
+.gt-gl.mao{cursor:pointer}
+.gt-sobre{position:absolute;inset:0;pointer-events:none}
+.gt-barra{position:absolute;z-index:4;top:calc(12px + env(safe-area-inset-top,0px));left:max(14px,env(safe-area-inset-left,0px));right:max(14px,env(safe-area-inset-right,0px));display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px}
+.gt-nome{font:600 19px/1.1 var(--f-disp);color:#fff}
+.gt-grupo{display:flex;gap:4px;padding:4px;border-radius:999px;background:rgba(3,8,18,.72);border:1px solid rgba(124,200,255,.24);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.gt-grupo button{border:0;background:transparent;color:#a3b3c4;font:700 13.5px/1 var(--f-ui);padding:10px 14px;border-radius:999px;cursor:pointer;white-space:nowrap}
+.gt-grupo button[aria-pressed="true"]{background:#eaf4ff;color:#07142b}
+.gt-grupo .gt-fechar{color:#eef3f8}
+.gt-grupo button:focus-visible{outline:2px solid #7cc8ff;outline-offset:1px}
+.gt-rot{position:absolute;left:0;top:0;pointer-events:auto;display:flex;align-items:center;gap:7px;background:none;border:0;padding:6px;margin:0;cursor:pointer;white-space:nowrap;will-change:transform,opacity;color:#eef3f8;opacity:0}
+.gt-rot i{width:7px;height:7px;border-radius:50%;flex:none;background:#fff1d2;box-shadow:0 0 0 3px rgba(255,196,107,.22),0 0 12px 3px rgba(255,180,80,.75)}
+.gt-rot span{font:12px/1.2 var(--f-ui);font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#ffe2b0;text-shadow:0 0 8px #000,0 0 2px #000}
+.gt-lugar i{width:5px;height:5px}
+.gt-lugar span{font-weight:400;text-transform:none;letter-spacing:0;color:#fff4dc}
+.gt-rot.sel span{color:#fff}
+.gt-rot:focus-visible{outline:2px solid #7cc8ff;outline-offset:1px;border-radius:6px}
+.gt-cartao{position:absolute;z-index:3;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(300px,calc(100% - 28px));box-sizing:border-box;padding:18px;border-radius:14px;background:rgba(4,12,26,.82);border:1px solid rgba(124,200,255,.24);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);display:grid;gap:12px;transition:opacity .3s ease,transform .4s cubic-bezier(.2,.8,.2,1)}
+.gt-cartao[data-aberto="nao"]{opacity:0;transform:translateY(10px);pointer-events:none}
+.gt-cartao p{margin:0}
+.gt-olho{font:700 11px/1.2 var(--f-ui);letter-spacing:.12em;text-transform:uppercase;color:#ffc46b}
+.gt-titulo{margin:6px 0 0;font:600 23px/1.1 var(--f-disp);color:#fff}
+.gt-coord{margin-top:5px!important;font-size:13px;color:#a3b3c4;font-variant-numeric:tabular-nums}
+.gt-compo{display:grid;gap:8px;margin:0;padding:0;list-style:none}
+.gt-compo li{display:grid;grid-template-columns:76px 1fr 38px;align-items:center;gap:10px;font-size:13.5px}
+.gt-barra-t{height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+.gt-barra-t i{display:block;height:100%;border-radius:3px}
+.gt-pc{font-size:12.5px;color:#a3b3c4;text-align:right;font-variant-numeric:tabular-nums}
+.gt-botoes{display:flex;gap:8px;flex-wrap:wrap}
+.gt-botoes button{border-radius:10px;padding:10px 14px;font:700 13.5px/1 var(--f-ui);background:transparent;color:#eef3f8;border:1px solid rgba(124,200,255,.35);cursor:pointer}
+.gt-botoes .gt-perto{background:#eaf4ff;color:#07142b;border-color:#eaf4ff}
+.gt-botoes button:focus-visible{outline:2px solid #7cc8ff;outline-offset:2px}
+.gt-dica{position:absolute;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);max-width:calc(100% - 28px);box-sizing:border-box;margin:0;text-align:center;font-size:12.5px;color:#a3b3c4;background:rgba(2,7,16,.6);border:1px solid rgba(124,200,255,.14);border-radius:999px;padding:7px 14px;pointer-events:none;transition:opacity .6s ease}
+.gt-dica.some{opacity:0}
+.gt-aviso{position:absolute;inset:0;display:grid;place-items:center;margin:0;color:#a3b3c4;font-size:14px;letter-spacing:.04em;pointer-events:none;transition:opacity .5s}
+.gt-aviso.some{opacity:0}
+.gt-vazio{position:absolute;z-index:3;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(360px,calc(100% - 28px));box-sizing:border-box;margin:0;padding:12px 16px;border-radius:12px;background:rgba(4,12,26,.82);border:1px solid rgba(124,200,255,.24);font-size:14px;color:#cfd9e4;text-align:center}
+.gt-vazio a{color:#fff}
+@media (prefers-reduced-motion:reduce){.gt-cartao,.gt-dica,.gt-aviso{transition:none}}
