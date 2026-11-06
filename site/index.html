@@ -267,16 +267,17 @@ async function montarGlobo(mesas) {
 }
 function fecharGlobo() {
   if (!GLOBO_ABERTO) return;
-  GLOBO_ABERTO = null; $("#globo-tela").hidden = true; document.documentElement.style.overflow = ""; if (GLOBO) GLOBO.seguir(); if (!matchMedia("(pointer: coarse)").matches) $("#bt-globo").focus();
+  GLOBO_ABERTO.parar(); GLOBO_ABERTO = null; $("#globo-tela").hidden = true; document.documentElement.style.overflow = ""; if (GLOBO) GLOBO.seguir(); if (!matchMedia("(pointer: coarse)").matches) $("#bt-globo").focus();
 }
 $("#bt-globo").onclick = () => {
   if (!GLOBO || GLOBO_ABERTO) return;
   GLOBO.pausar(); $("#globo-tela").hidden = false; document.documentElement.style.overflow = "hidden";
   history.pushState({ globo: 1 }, "", "#mundo");
-  GLOBO_ABERTO = SMGlobo.abrir($("#globo-tela"), GLOBO.P, GLOBO_INFO ? GLOBO_INFO.nome : "Mundo de UDA", () => { if (history.state && history.state.globo) history.back(); else fecharGlobo() });
+  /* Fechar esconde na hora; depois tira o "#mundo" do histórico (o popstate que vem não faz mais nada) */
+  GLOBO_ABERTO = SMGlobo.abrir($("#globo-tela"), GLOBO.P, GLOBO_INFO ? GLOBO_INFO.nome : "Mundo de UDA", () => { const tirar = history.state && history.state.globo; fecharGlobo(); if (tirar) history.back() });
   setTimeout(() => $("#globo-tela .gt-fechar").focus(), 0);
 };
-addEventListener("popstate", () => { if (GLOBO_ABERTO) GLOBO_ABERTO.fechar() });   // fechar libera o 3D e volta por aoFechar
+addEventListener("popstate", fecharGlobo);   // o Voltar do celular fecha o mundo
 if (location.hash === "#mundo") history.replaceState(null, "", location.pathname + location.search);
 
 $("#bt-entrar").onclick = () => { $("#f-abrir").hidden = true; $("#f-entrar").hidden = !$("#f-entrar").hidden;

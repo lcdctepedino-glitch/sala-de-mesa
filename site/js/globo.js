@@ -249,8 +249,10 @@ const SMGlobo = (() => {
     dica.textContent = TOQUE ? "Arraste para girar · dois dedos aproximam · toque numa terra" : "Arraste para girar · role para aproximar · clique numa terra";
     dica.classList.remove("some"); cartao.dataset.aberto = "nao"; aviso.classList.remove("some"); sobre.textContent = "";
     let C = null, vivo = true;
-    const fechar = () => { if (!vivo) return; vivo = false; removeEventListener("resize", medir); removeEventListener("keydown", tecla); aoFechar && aoFechar() };
-    const tecla = e => { if (e.key === "Escape") { if (modo !== "mundo") voltar(); else fechar() } };
+    // parar: só para de desenhar e de ouvir (quem esconde a tela é o Início); o botão Fechar e o Esc pedem para fechar
+    const parar = () => { vivo = false; removeEventListener("resize", medir); removeEventListener("keydown", tecla) };
+    const pedirFechar = () => { if (aoFechar) aoFechar() };
+    const tecla = e => { if (e.key === "Escape") { if (modo !== "mundo") voltar(); else pedirFechar() } };
     addEventListener("keydown", tecla);
     let yaw = 0, pitch = .22, vyaw = 0, vpitch = 0, tYaw = 0, tPitch = 0, indo = false, modo = "mundo", foco = null, zoomUser = 1, dist = 7, base = 4.4, ultimoToque = -10, agora = 0, comRede = true, comNuvens = true, opN = .55, LW = 1, LH = 1;
     function medir() { if (!C) return; LW = tela.clientWidth; LH = tela.clientHeight; C.renderer.setSize(LW, LH, false); C.cam.aspect = LW / LH; C.cam.updateProjectionMatrix();
@@ -259,7 +261,7 @@ const SMGlobo = (() => {
     bR.setAttribute("aria-pressed", "true"); bN.setAttribute("aria-pressed", "true");
     bR.onclick = () => { comRede = !comRede; bR.setAttribute("aria-pressed", String(comRede)) };
     bN.onclick = () => { comNuvens = !comNuvens; bN.setAttribute("aria-pressed", String(comNuvens)) };
-    $(".gt-fechar").onclick = fechar;
+    $(".gt-fechar").onclick = pedirFechar;
     const ang = a => { a = (a + Math.PI) % (2 * Math.PI); if (a < 0) a += 2 * Math.PI; return a - Math.PI };
     const mirar = v => { tYaw = Math.atan2(-v.x, v.z); tPitch = Math.atan2(v.y, Math.hypot(v.x, v.z)); indo = true };
     const nomeDe = p => p.nome || `Terra ${p.n}`;
@@ -337,7 +339,7 @@ const SMGlobo = (() => {
         if (op > .05) { if (usados.some(u => Math.abs(u.x - Pt.x) < 100 && Math.abs(u.y - Pt.y) < 22)) op = 0; else usados.push(Pt) }
         r.el.style.transform = `translate(${Pt.x - 10}px,${Pt.y - 15}px)`; r.el.style.opacity = op; r.el.style.pointerEvents = r.terra && op > .3 ? "auto" : "none"; if (r.terra) r.el.tabIndex = op > .3 ? 0 : -1 }
     }
-    return { fechar };
+    return { parar };
   }
 
   return { carregarDoInicio, preparar, mini, abrir };
