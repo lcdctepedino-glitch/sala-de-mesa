@@ -81,3 +81,20 @@ function smConfirmar(bt, texto, acao) {
   const antes = bt.textContent; bt.dataset.conf = "1"; bt.textContent = texto; bt.classList.add("conf");
   setTimeout(() => { if (bt.isConnected) { delete bt.dataset.conf; bt.textContent = antes; bt.classList.remove("conf") } }, 3500);
 }
+
+/* App da tela de início (iPhone): não tem botão de recarregar e guarda arquivos velhos. Ao abrir e ao voltar para a frente,
+   pergunta a versão atual (versao.json, sem cache); se a página for de outra versão, recarrega uma vez com ?v= novo.
+   A versão da página fica em <meta name="sm-versao">; os arquivos dela levam o mesmo ?v= (nova_versao.py troca tudo junto). */
+const SM_VERSAO = (document.querySelector('meta[name="sm-versao"]') || {}).content || "";
+async function smConferirVersao() {
+  if (!SM_VERSAO) return;
+  try {
+    const r = await fetch("versao.json?t=" + Date.now(), { cache: "no-store" }); if (!r.ok) return;
+    const v = (await r.json()).v; if (!v || v === SM_VERSAO) return;
+    const k = "sm-recarregou-" + v; if (sessionStorage.getItem(k)) return; sessionStorage.setItem(k, "1");
+    const u = new URL(location.href); u.searchParams.set("v", v); location.replace(u.href);
+  } catch (e) { }
+}
+function smAtualizarApp() { const u = new URL(location.href); u.searchParams.set("v", Date.now()); location.replace(u.href) }
+smConferirVersao();
+document.addEventListener("visibilitychange", () => { if (!document.hidden) smConferirVersao() });
