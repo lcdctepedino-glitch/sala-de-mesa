@@ -339,7 +339,7 @@ const SMGlobo = (() => {
         if (op > .05) { if (usados.some(u => Math.abs(u.x - Pt.x) < 100 && Math.abs(u.y - Pt.y) < 22)) op = 0; else usados.push(Pt) }
         r.el.style.transform = `translate(${Pt.x - 10}px,${Pt.y - 15}px)`; r.el.style.opacity = op; r.el.style.pointerEvents = r.terra && op > .3 ? "auto" : "none"; if (r.terra) r.el.tabIndex = op > .3 ? 0 : -1 }
     }
-    return { parar };
+    return { parar, fechar: parar };
   }
 
   return { carregarDoInicio, preparar, mini, abrir };

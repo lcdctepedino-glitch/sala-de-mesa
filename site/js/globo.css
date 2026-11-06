@@ -46,3 +46,4 @@
 .gt-vazio{position:absolute;z-index:3;left:50%;bottom:calc(84px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(360px,calc(100% - 28px));box-sizing:border-box;margin:0;padding:12px 16px;border-radius:12px;background:rgba(4,12,26,.82);border:1px solid rgba(124,200,255,.24);font-size:14px;color:#cfd9e4;text-align:center}
 .gt-vazio a{color:#fff}
 @media (prefers-reduced-motion:reduce){.gt-cartao,.gt-dica,.gt-aviso{transition:none}}
+.gt-versao{position:absolute;right:max(10px,env(safe-area-inset-right,0px));bottom:calc(4px + env(safe-area-inset-bottom,0px));font-size:10px;color:rgba(163,179,196,.45);pointer-events:none}
