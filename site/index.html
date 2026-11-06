@@ -267,7 +267,7 @@ async function montarGlobo(mesas) {
 }
 function fecharGlobo() {
   if (!GLOBO_ABERTO) return;
-  GLOBO_ABERTO = null; $("#globo-tela").hidden = true; document.documentElement.style.overflow = ""; if (GLOBO) GLOBO.seguir(); $("#bt-globo").focus();
+  GLOBO_ABERTO = null; $("#globo-tela").hidden = true; document.documentElement.style.overflow = ""; if (GLOBO) GLOBO.seguir(); if (!matchMedia("(pointer: coarse)").matches) $("#bt-globo").focus();
 }
 $("#bt-globo").onclick = () => {
   if (!GLOBO || GLOBO_ABERTO) return;

@@ -116,56 +116,56 @@ const SMGlobo = (() => {
     const cr = novo(), xr = cr.getContext("2d"); xr.lineCap = xr.lineJoin = "round"; xr.strokeStyle = "#fff";
     const pxDe = (x, y) => [((LON0 + x * GRAU) + 180) / 360 * TW, (90 - (LAT0 - y * GRAU)) / 180 * TH], esc = TW / 2048;
     for (const r of P.rios) for (let q = 0; q < r.length - 1; q++) { const f = q / (r.length - 1), [ax, ay] = pxDe(r[q][0], r[q][1]), [bx, by] = pxDe(r[q + 1][0], r[q + 1][1]); xr.lineWidth = (.9 + f * 2.4) * esc + .3; xr.beginPath(); xr.moveTo(ax, ay); xr.lineTo(bx, by); xr.stroke() }
-    const rio = xr.getImageData(0, 0, TW, TH).data;
+    const rio = xr.getImageData(0, 0, TW, TH).data; cr.width = cr.height = 1;   // devolve a memória do canvas na hora (o iPhone tem teto baixo)
     for (let i = 0; i < N; i++) { const rv = rio[i * 4] / 255; if (rv > 0) alt[i] *= 1 - .65 * rv }
-    const C = novo(), E = novo(), R = novo(), NM = novo(), HM = novo(), cx = C.getContext("2d"), ex = E.getContext("2d"), rx = R.getContext("2d"), nx2 = NM.getContext("2d"), hx = HM.getContext("2d");
-    const ci = cx.createImageData(TW, TH), ei = ex.createImageData(TW, TH), ri = rx.createImageData(TW, TH), ni = nx2.createImageData(TW, TH), hi = hx.createImageData(TW, TH);
-    const cd = ci.data, ed = ei.data, rd = ri.data, nd = ni.data, hd = hi.data; semente = 11;
+    const cd = new Uint8Array(N * 4), ed = new Uint8Array(N * 4), rd = new Uint8Array(N * 4), nd = new Uint8Array(N * 4), hd = new Uint8Array(N * 4); semente = 11;
+    const inv = (px, py) => ((TH - 1 - py) * TW + px) * 4;   // a textura de bytes começa por baixo (sul); o mapa, por cima
     const ondas = (x, y) => Math.sin(x * .09 + y * .021) * .5 + Math.sin(x * .023 - y * .13 + 1.7) * .35 + Math.sin((x + y) * .31) * .15;
     const dens0 = .0045 * (2048 * 1024) / N;
-    for (let py = 0; py < TH; py++) { const lat = 90 - (py + .5) / TH * 180; for (let px = 0; px < TW; px++) { const i = py * TW + px, o = i * 4, L = terraV[i], t = sm(.44, .56, L), h = alt[i];
+    for (let py = 0; py < TH; py++) { const lat = 90 - (py + .5) / TH * 180; for (let px = 0; px < TW; px++) { const i = py * TW + px, o = inv(px, py), L = terraV[i], t = sm(.44, .56, L), h = alt[i];
         const raso = sm(.15, .5, L); let r = 4 + 8 * raso, g = 14 + 26 * raso, b = 34 + 46 * raso;
         if (t > 0) { const pc = peso[0][i], pf = peso[1][i], pm = peso[2][i], pd = peso[3][i];
           let lr = 18 * pc + 9 * pf + 38 * pm + 44 * pd, lg = 30 * pc + 28 * pf + 48 * pm + 40 * pd, lb = 48 * pc + 38 * pf + 70 * pm + 52 * pd;
           const neve = sm(.68, .92, h) * pm * .8; lr += (150 - lr) * neve; lg += (172 - lg) * neve; lb += (205 - lb) * neve;
-          const rv = rio[o] / 255; lr += (16 - lr) * rv * .8; lg += (64 - lg) * rv * .8; lb += (118 - lb) * rv * .8;
+          const rv = rio[i * 4] / 255; lr += (16 - lr) * rv * .8; lg += (64 - lg) * rv * .8; lb += (118 - lb) * rv * .8;
           r += (lr - r) * t; g += (lg - g) * t; b += (lb - b) * t }
         if (Math.abs(lat) > 76) { const gelo = sm(76, 80, Math.abs(lat)); r += (60 - r) * gelo; g += (84 - g) * gelo; b += (118 - b) * gelo }
         cd[o] = r; cd[o + 1] = g; cd[o + 2] = b; cd[o + 3] = 255;
         rd[o] = rd[o + 1] = rd[o + 2] = t > .5 ? 235 : 150 + raso * 30; rd[o + 3] = 255;
         let er = 0, eg = 0, eb = 0;
-        if (t > .6) { const dens = peso[0][i] + peso[1][i] * .35 + (peso[2][i] + peso[3][i]) * .12, perto = rio[o] > 0 ? 2.2 : 1;
+        if (t > .6) { const dens = peso[0][i] + peso[1][i] * .35 + (peso[2][i] + peso[3][i]) * .12, perto = rio[i * 4] > 0 ? 2.2 : 1;
           if (rnd() < dens * dens0 * perto) { const lz = .55 + rnd() * .45; er = 255 * lz; eg = 196 * lz; eb = 110 * lz } }
         const faixa = Math.max(0, 1 - Math.abs(L - .5) / .05); er += 60 * faixa; eg += 42 * faixa; eb += 20 * faixa;
         ed[o] = Math.min(255, er); ed[o + 1] = Math.min(255, eg); ed[o + 2] = Math.min(255, eb); ed[o + 3] = 255;
         hd[o] = hd[o + 1] = hd[o + 2] = Math.round(h * 255); hd[o + 3] = 255 } }
     const S = 26 * TW / 2048;
-    for (let py = 0; py < TH; py++) { const yu = Math.max(0, py - 1), yd = Math.min(TH - 1, py + 1); for (let px = 0; px < TW; px++) { const xl = (px - 1 + TW) % TW, xr2 = (px + 1) % TW, i = py * TW + px, o = i * 4;
+    for (let py = 0; py < TH; py++) { const yu = Math.max(0, py - 1), yd = Math.min(TH - 1, py + 1); for (let px = 0; px < TW; px++) { const xl = (px - 1 + TW) % TW, xr2 = (px + 1) % TW, i = py * TW + px, o = inv(px, py);
         let dx = (alt[py * TW + xr2] - alt[py * TW + xl]) * .5 * S, dy = (alt[yd * TW + px] - alt[yu * TW + px]) * .5 * S;
         if (terraV[i] < .5) { const w = .018 * (1 - sm(.3, .5, terraV[i])); dx += (ondas(px + 1, py) - ondas(px - 1, py)) * w * 6; dy += (ondas(px, py + 1) - ondas(px, py - 1)) * w * 6 }
         let a1 = -dx, a2 = dy, a3 = 1; const n = Math.hypot(a1, a2, a3); a1 /= n; a2 /= n; a3 /= n;
         nd[o] = (a1 * .5 + .5) * 255; nd[o + 1] = (a2 * .5 + .5) * 255; nd[o + 2] = (a3 * .5 + .5) * 255; nd[o + 3] = 255 } }
-    cx.putImageData(ci, 0, 0); ex.putImageData(ei, 0, 0); rx.putImageData(ri, 0, 0); nx2.putImageData(ni, 0, 0); hx.putImageData(hi, 0, 0);
     // lugares marcados: luz dourada forte
-    ex.globalCompositeOperation = "lighter";
-    for (const l of P.lugares) { const px = (l.lon + 180) / 360 * TW, py = (90 - l.lat) / 180 * TH, rr = 5 * TW / 2048 + 1.5, gr = ex.createRadialGradient(px, py, 0, px, py, rr);
-      gr.addColorStop(0, "rgba(255,236,190,1)"); gr.addColorStop(.35, "rgba(255,190,100,.8)"); gr.addColorStop(1, "rgba(255,150,60,0)"); ex.fillStyle = gr; ex.fillRect(px - rr, py - rr, rr * 2, rr * 2) }
-    const an = renderer.capabilities.getMaxAnisotropy(), T = c => { const t = new THREE.CanvasTexture(c); t.anisotropy = an; return t };
-    return { cor: T(C), luz: T(E), rug: T(R), nor: T(NM), alt: T(HM), ids, altArr: alt, peso, TW, TH };
+    for (const l of P.lugares) { const cx = (l.lon + 180) / 360 * TW, cy = (90 - l.lat) / 180 * TH, rr = 5 * TW / 2048 + 1.5;
+      for (let y = Math.floor(cy - rr); y <= cy + rr; y++) for (let x = Math.floor(cx - rr); x <= cx + rr; x++) { if (y < 0 || y >= TH) continue; const xx = (x + TW) % TW, d = Math.hypot(x - cx, y - cy) / rr; if (d >= 1) continue;
+        const k = (1 - d) * (1 - d), o = inv(xx, y); ed[o] = Math.min(255, ed[o] + 255 * k); ed[o + 1] = Math.min(255, ed[o + 1] + 215 * k); ed[o + 2] = Math.min(255, ed[o + 2] + 150 * k) } }
+    const an = renderer.capabilities.getMaxAnisotropy(), T = a => dados(a, TW, TH, an);
+    return { cor: T(cd), luz: T(ed), rug: T(rd), nor: T(nd), alt: T(hd), ids, altArr: alt, peso, TW, TH };
   }
-  function canvasNuvens(W, H) {
-    const cv = document.createElement("canvas"); cv.width = W; cv.height = H; const x = cv.getContext("2d"), im = x.createImageData(W, H), d = im.data;
+  function dados(a, W, H, an) { const t = new THREE.DataTexture(a, W, H, THREE.RGBAFormat); t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.anisotropy = an || 1; t.needsUpdate = true; return t }
+  function nuvensDados(W, H) {
+    const d = new Uint8Array(W * H * 4);
     for (let py = 0; py < H; py++) { const th = (py + .5) / H * Math.PI, s = Math.sin(th), cy = Math.cos(th), lat = 90 - (py + .5) / H * 180, faixa = .8 + .2 * Math.cos(lat * Math.PI / 26);
-      for (let px = 0; px < W; px++) { const a = 2 * Math.PI * (px + .5) / W, X = -Math.cos(a) * s, Y = cy, Z = Math.sin(a) * s, n = fbm(X * 2.6 + 40, Y * 4.2 + 40, Z * 2.6 + 40, 5), al = sm(.55, .78, n * faixa + .06), o = (py * W + px) * 4;
+      for (let px = 0; px < W; px++) { const a = 2 * Math.PI * (px + .5) / W, X = -Math.cos(a) * s, Y = cy, Z = Math.sin(a) * s, n = fbm(X * 2.6 + 40, Y * 4.2 + 40, Z * 2.6 + 40, 5), al = sm(.55, .78, n * faixa + .06), o = ((H - 1 - py) * W + px) * 4;
         d[o] = 210; d[o + 1] = 226; d[o + 2] = 255; d[o + 3] = al * 200 } }
-    x.putImageData(im, 0, 0); return cv;
+    return dados(d, W, H);
   }
 
   /* ---------- a cena (a mesma para o globo pequeno e a tela cheia) ---------- */
   function cena(canvas, P, q) {
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.setClearColor(0, 0);
-    const TX = texturas(P, q.TW, q.TH, renderer), DISP = .032, uTempo = { value: 0 };
+    let TX; try { TX = texturas(P, q.TW, q.TH, renderer) } catch (e) { renderer.dispose(); try { renderer.forceContextLoss() } catch (x) { } throw e }
+    const DISP = .032, uTempo = { value: 0 };
     const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(35, 1, .005, 100); sc.add(cam);
     const pivo = new THREE.Group(), giro = new THREE.Group(); pivo.add(giro); sc.add(pivo);
     const luz = new THREE.DirectionalLight(0xb7d2ff, 1.75); luz.position.set(1.6, 1.1, 1.2); sc.add(luz); sc.add(new THREE.AmbientLight(0x0c1a33, 1));
@@ -179,7 +179,7 @@ const SMGlobo = (() => {
       vertexShader: "varying vec3 vN;void main(){vN=normalize(normalMatrix*normal);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}",
       fragmentShader: "uniform vec3 c;varying vec3 vN;void main(){float d=dot(vN,vec3(0.0,0.0,1.0));float i=pow(max(0.0,0.5-d),5.0)*14.0+pow(max(0.0,0.75-d),3.0)*0.35;gl_FragColor=vec4(c*i,min(1.0,i));}",
       side: THREE.BackSide, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false })));
-    const nuvens = new THREE.Mesh(new THREE.SphereGeometry(1 + DISP + .012, 128, 64), new THREE.MeshStandardMaterial({ map: new THREE.CanvasTexture(canvasNuvens(q.TW / 2, q.TH / 2)), transparent: true, opacity: .55, depthWrite: false, roughness: 1, metalness: 0 }));
+    const nuvens = new THREE.Mesh(new THREE.SphereGeometry(1 + DISP + .012, 128, 64), new THREE.MeshStandardMaterial({ map: nuvensDados(q.TW / 2, q.TH / 2), transparent: true, opacity: .55, depthWrite: false, roughness: 1, metalness: 0 }));
     pivo.add(nuvens);
     // rede dourada: liga as terras e os lugares mais perto entre si
     const rede = new THREE.Group(); giro.add(rede);
@@ -194,7 +194,7 @@ const SMGlobo = (() => {
     // árvores: só na tela cheia, aparecem de perto
     let arvores = null;
     if (q.arvores) { const pontos = []; semente = 21;
-      for (let t = 0; t < 400000 && pontos.length < 14000; t++) { const px = Math.floor(rnd() * TX.TW), py = Math.floor(rnd() * TX.TH), i = py * TX.TW + px; if (TX.peso[1][i] > .55 && TX.altArr[i] > 0) pontos.push([px, py, TX.altArr[i]]) }
+      for (let t = 0; t < 400000 && pontos.length < q.arvores; t++) { const px = Math.floor(rnd() * TX.TW), py = Math.floor(rnd() * TX.TH), i = py * TX.TW + px; if (TX.peso[1][i] > .55 && TX.altArr[i] > 0) pontos.push([px, py, TX.altArr[i]]) }
       if (pontos.length) { const geo = new THREE.ConeGeometry(.0019, .0068, 5); geo.translate(0, .0034, 0);
         arvores = new THREE.InstancedMesh(geo, new THREE.MeshStandardMaterial({ color: 0x1d4a3c, roughness: .9, flatShading: true }), pontos.length);
         const m = new THREE.Matrix4(), qq = new THREE.Quaternion(), cima = new THREE.Vector3(0, 1, 0), e = new THREE.Vector3();
@@ -210,15 +210,15 @@ const SMGlobo = (() => {
 
   /* ---------- o globo pequeno do Início: só gira e flutua; pausa fora da tela ---------- */
   function mini(canvas, info) {
-    const P = preparar(info), C = cena(canvas, P, { TW: 1024, TH: 512, seg: 160, arvores: false, estrelas: false });
-    let vivo = true, visto = true, ult = 0, yaw = C.yaw0, base = 4;
-    const medir = () => { const w = canvas.clientWidth || 300, h = canvas.clientHeight || 260; C.renderer.setSize(w, h, false); C.cam.aspect = w / h; C.cam.updateProjectionMatrix();
+    const P = preparar(info), Q = { TW: 1024, TH: 512, seg: 160, arvores: 0, estrelas: false }, caixa = canvas.parentElement;
+    let C = cena(canvas, P, Q), vivo = true, visto = true, ult = 0, yaw = C.yaw0, base = 4;
+    const medir = () => { if (!C) return; const w = canvas.clientWidth || 300, h = canvas.clientHeight || 260; C.renderer.setSize(w, h, false); C.cam.aspect = w / h; C.cam.updateProjectionMatrix();
       const t = Math.tan(C.cam.fov * Math.PI / 360); base = Math.max(1 / (.84 * t), 1 / (.84 * t * C.cam.aspect)) };
     medir(); addEventListener("resize", medir);
-    new IntersectionObserver(es => { visto = es[0].isIntersecting; if (visto && vivo) requestAnimationFrame(quadro) }).observe(canvas);
+    new IntersectionObserver(es => { visto = es[0].isIntersecting; if (visto && vivo) requestAnimationFrame(quadro) }).observe(caixa);
     document.addEventListener("visibilitychange", () => { if (!document.hidden && vivo && visto) requestAnimationFrame(quadro) });
     function quadro(ms) {
-      if (!vivo || !visto || document.hidden) return;
+      if (!vivo || !visto || document.hidden || !C) return;
       const t = ms / 1000, dt = Math.min(.05, t - (ult || t)); ult = t; C.uTempo.value = t;
       if (!RM) yaw += dt * .09;
       C.giro.rotation.y = yaw; C.pivo.rotation.x = .24; C.nuvens.rotation.y = yaw + t * .005; C.pivo.position.y = RM ? 0 : Math.sin(t * .6) * .03;
@@ -226,13 +226,18 @@ const SMGlobo = (() => {
       if (!RM) requestAnimationFrame(quadro);
     }
     requestAnimationFrame(quadro);
-    return { P, pausar() { vivo = false }, seguir() { if (!vivo) { vivo = true; ult = 0; requestAnimationFrame(quadro) } } };
+    return { P,
+      /* a tela cheia precisa da memória do aparelho: o pequeno solta o 3D dele e monta de novo na volta */
+      pausar() { vivo = false; if (!C) return; C.renderer.dispose(); try { C.renderer.forceContextLoss() } catch (e) { } C = null; const n = canvas.cloneNode(false); canvas.replaceWith(n); canvas = n },
+      seguir() { if (vivo) return; vivo = true; ult = 0; try { if (!C) { C = cena(canvas, P, Q); medir() } } catch (e) { console.error(e); return } requestAnimationFrame(quadro) } };
   }
 
   /* ---------- a tela cheia: arrastar com embalo, aproximar, clicar numa terra, chegar perto ---------- */
   function abrir(el, P, nomeMundo, aoFechar) {
-    const $ = s => el.querySelector(s), tela = $(".gt-gl"), sobre = $(".gt-sobre"), cartao = $(".gt-cartao"), dica = $(".gt-dica"), aviso = $(".gt-aviso");
+    const $ = s => el.querySelector(s), sobre = $(".gt-sobre"), cartao = $(".gt-cartao"), dica = $(".gt-dica"), aviso = $(".gt-aviso");
     const TOQUE = matchMedia("(pointer: coarse)").matches;
+    // canvas novo a cada abertura: o da vez anterior teve o 3D desligado ao fechar e não volta
+    let tela = $(".gt-gl"); { const n = tela.cloneNode(false); tela.replaceWith(n); tela = n }
     $(".gt-nome").textContent = nomeMundo || "Mundo de UDA";
     $(".gt-vazio").hidden = P.pecas.length > 0;
     dica.textContent = TOQUE ? "Arraste para girar · dois dedos aproximam · toque numa terra" : "Arraste para girar · role para aproximar · clique numa terra";
@@ -272,7 +277,12 @@ const SMGlobo = (() => {
     // montar depois de pintar o aviso (a conta das montanhas leva uns segundos no celular)
     setTimeout(() => {
       if (!vivo) return;
-      try { C = cena(tela, P, { TW: 2048, TH: 1024, seg: 512, arvores: true, estrelas: true }) } catch (e) { aviso.textContent = "Não consegui abrir o mundo em 3D neste aparelho."; console.error(e); return }
+      const leve = TOQUE || Math.min(screen.width, screen.height) < 700;
+      const niveis = leve ? [{ TW: 2048, TH: 1024, seg: 320, arvores: 9000, estrelas: true }, { TW: 1024, TH: 512, seg: 256, arvores: 5000, estrelas: true }]
+        : [{ TW: 2048, TH: 1024, seg: 512, arvores: 14000, estrelas: true }, { TW: 1024, TH: 512, seg: 256, arvores: 6000, estrelas: true }];
+      let erro = null;
+      for (const q of niveis) { try { C = cena(tela, P, q); erro = null; break } catch (e) { erro = e; console.error(e) } }
+      if (!C) { aviso.innerHTML = 'Não consegui abrir o mundo em 3D neste aparelho.<br><small style="opacity:.7;font-size:12px"></small>'; aviso.querySelector("small").textContent = String(erro && (erro.message || erro)).slice(0, 160); return }
       yaw = C.yaw0; addEventListener("resize", medir); medir(); dist = base * 1.3; aviso.classList.add("some"); requestAnimationFrame(quadro);
     }, 60);
 
