@@ -16,8 +16,8 @@ const SMGlobo = (() => {
   function deB64(s, n) { const a = new Uint8Array(n); try { const b = atob(s || ""); for (let i = 0; i < Math.min(n, b.length); i++) a[i] = b.charCodeAt(i) } catch (e) { } return a }
   const VERS = { dia: { sol: [-.45, .35, .82], exp: 1 }, noite: { sol: [.76, .2, -.62], exp: 1.3 }, meio: { sol: [.96, .18, .2], exp: 1.08 } };
   for (const k in VERS) VERS[k].sol = new THREE.Vector3(...VERS[k].sol).normalize();
-  const lerVersao = () => { try { const v = localStorage.getItem("sm-globo-luz"); if (VERS[v]) return v } catch (e) { } return "dia" };
-  const guardarVersao = v => { try { localStorage.setItem("sm-globo-luz", v) } catch (e) { } };
+  const lerVersao = () => { try { const v = localStorage.getItem("sm-globo-luz2"); if (VERS[v]) return v } catch (e) { } return "meio" };
+  const guardarVersao = v => { try { localStorage.setItem("sm-globo-luz2", v) } catch (e) { } };
 
   /* ---------- ler o mundo do banco: primeiro um mundo meu; se não houver, o da mesa onde jogo ---------- */
   async function carregarDoInicio(eu, mesas) {
