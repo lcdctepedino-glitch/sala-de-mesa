@@ -322,7 +322,8 @@ const AR_F = "uniform vec3 uSol;varying vec3 vN;varying vec3 vV;varying vec3 vW;
     const rotulos = [];
     P.pecas.filter(p => p.cel.length >= 120 || p.nome).sort((a, b) => a.n - b.n).forEach(p => { const b = document.createElement("button"); b.type = "button"; b.className = "gt-rot"; b.innerHTML = "<i></i><span></span>";
       b.querySelector("span").textContent = nomeDe(p); b.onclick = () => focar(p); sobre.appendChild(b); rotulos.push({ p, el: b, v: p.v, terra: true }) });
-    P.lugares.forEach(l => { const cid = temCidade(l), b = document.createElement(cid ? "button" : "span"); if (cid) { b.type = "button"; b.onclick = () => focarCidade(l) } b.className = "gt-rot gt-lugar" + (cid ? " gt-cidade" : ""); b.innerHTML = "<i></i><span></span>"; b.querySelector("span").textContent = l.nome; sobre.appendChild(b); rotulos.push({ el: b, v: l.v, terra: false }) });
+    P.lugares.forEach(l => { const cid = temCidade(l), b = document.createElement(cid ? "button" : "span"); if (cid) { b.type = "button"; b.onclick = () => focarCidade(l) } b.className = "gt-rot gt-lugar" + (cid ? " gt-cidade" : ""); b.innerHTML = "<i></i><span></span>"; b.querySelector("span").textContent = l.nome; sobre.appendChild(b); rotulos.push({ el: b, v: l.v, terra: false, cid }) });
+    rotulos.sort((a, b) => (b.cid ? 1 : 0) - (a.cid ? 1 : 0));   // cidade primeiro: ela aparece em qualquer distância e ganha o lugar quando dois nomes se encostam
 
     // montar depois de pintar o aviso
     setTimeout(() => {
@@ -364,9 +365,9 @@ const AR_F = "uniform vec3 uSol;varying vec3 vN;varying vec3 vV;varying vec3 vW;
       desenhar(C, yaw, pitch, alt, versao, opN, agora, dt);
       const usados = [], longe = sm(.35, .8, alt), perto = 1 - sm(.3, .7, alt);
       for (const r of rotulos) { tmp.copy(r.v).applyMatrix4(C.giro.matrixWorld); const f = tmp.dot(tmp2.copy(C.cam.position).sub(tmp).normalize()); tmp2.copy(tmp).project(C.cam);
-        const x = (tmp2.x + 1) / 2 * LW, y = (1 - tmp2.y) / 2 * LH; let op = sm(.15, .4, f) * (r.terra ? longe : perto) * .92; if (tmp2.z > 1) op = 0;
+        const x = (tmp2.x + 1) / 2 * LW, y = (1 - tmp2.y) / 2 * LH; let op = sm(.15, .4, f) * (r.cid ? 1 : r.terra ? longe : perto) * .92; if (tmp2.z > 1) op = 0;
         if (op > .05) { if (usados.some(u => Math.abs(u.x - x) < 96 && Math.abs(u.y - y) < 22)) op = 0; else usados.push({ x, y }) }
-        r.el.style.transform = `translate(${x - 11}px,${y - 14}px)`; r.el.style.opacity = op; r.el.style.pointerEvents = r.terra && op > .3 ? "auto" : "none"; if (r.terra) r.el.tabIndex = op > .3 ? 0 : -1 }
+        r.el.style.transform = `translate(${x - 11}px,${y - 14}px)`; r.el.style.opacity = op; r.el.style.pointerEvents = (r.terra || r.cid) && op > .3 ? "auto" : "none"; if (r.terra || r.cid) r.el.tabIndex = op > .3 ? 0 : -1 }
     }
     return { parar, fechar: parar };
   }
