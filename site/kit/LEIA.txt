@@ -1,0 +1,4 @@
+Peças 3D da cidade (cidade.html). Uso livre, licença CC0 1.0.
+- Casas, telhados, portas, janelas e texturas: Medieval Village MegaKit (versão gratuita), de Quaternius - quaternius.com
+- Móveis (nomes K_ dentro de kit.bin, textura Kay_c.png): KayKit Dungeon Remastered 1.0, de Kay Lousberg - kaylousberg.com
+kit.bin junta as peças escolhidas num arquivo só; as texturas foram reduzidas para 1024.

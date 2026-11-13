@@ -301,7 +301,7 @@ const AR_F = "uniform vec3 uSol;varying vec3 vN;varying vec3 vV;varying vec3 vW;
       altAlvo = novo; ultimoToque = agora; dica.classList.add("some") }
     const altDe = p => clamp(p.raio * 1.25 / (TG * Math.min(1, C ? C.cam.aspect : 1)), .16, altBase);
     const nomeDe = p => p.nome || `Terra ${p.n}`;
-    function focar(p) { foco = p; mirar(p.v); altAlvo = altDe(p); const tam = p.cel.length, tipo = tam >= 600 ? "Continente" : tam >= 120 ? "Terra" : "Ilha";
+    function focar(p) { cidadeFoco = null; $(".gt-perto").textContent = "Chegar perto"; foco = p; mirar(p.v); altAlvo = altDe(p); const tam = p.cel.length, tipo = tam >= 600 ? "Continente" : tam >= 120 ? "Terra" : "Ilha";
       $(".gt-olho").textContent = p.nome ? tipo : tipo + " · ainda sem nome"; $(".gt-titulo").textContent = nomeDe(p);
       $(".gt-coord").textContent = `${coord(p.lat, p.lon)} · ${tam.toLocaleString("pt-BR")} quadradinhos` + (p.lugares ? ` · ${p.lugares} ${p.lugares === 1 ? "lugar" : "lugares"}` : "");
       const ul = $(".gt-compo"); ul.textContent = "";
@@ -309,15 +309,20 @@ const AR_F = "uniform vec3 uSol;varying vec3 vN;varying vec3 vV;varying vec3 vW;
         li.innerHTML = '<span></span><span class="gt-barra-t"><i></i></span><span class="gt-pc"></span>'; li.children[0].textContent = NOMES_T[t];
         const i = li.querySelector("i"); i.style.width = Math.max(2, pc) + "%"; i.style.background = CORES_T[t]; li.children[2].textContent = pc + "%"; ul.appendChild(li) });
       cartao.dataset.aberto = "sim"; dica.classList.add("some"); rotulos.forEach(o => o.el.classList.toggle("sel", o.p === p)) }
-    function voltar() { foco = null; indo = false; altAlvo = altBase; cartao.dataset.aberto = "nao"; ultimoToque = agora; rotulos.forEach(o => o.el.classList.remove("sel")) }
+    function voltar() { cidadeFoco = null; $(".gt-perto").textContent = "Chegar perto"; foco = null; indo = false; altAlvo = altBase; cartao.dataset.aberto = "nao"; ultimoToque = agora; rotulos.forEach(o => o.el.classList.remove("sel")) }
+    /* atalho: por enquanto só o lugar chamado "Ipanema" tem cidade em 3D (a cidade murada de teste, cidade.html); trocar quando a cidade for guardada junto do mundo, no banco */
+    const temCidade = l => /^ipanema$/i.test(String(l.nome).trim());
+    let cidadeFoco = null;
+    function focarCidade(l) { foco = null; cidadeFoco = l; mirar(l.v); altAlvo = ALT_MIN * 1.5; $(".gt-olho").textContent = "Cidade"; $(".gt-titulo").textContent = l.nome; $(".gt-coord").textContent = coord(l.lat, l.lon) + " · dá para andar por ela";
+      $(".gt-compo").textContent = ""; $(".gt-perto").textContent = "Explorar cidade"; cartao.dataset.aberto = "sim"; dica.classList.add("some"); rotulos.forEach(o => o.el.classList.remove("sel")) }
     $(".gt-volta").onclick = voltar;
-    $(".gt-perto").onclick = () => { if (foco) { mirar(foco.v); altAlvo = clamp(altDe(foco) * .26, ALT_MIN, .3) } };
+    $(".gt-perto").onclick = () => { if (cidadeFoco) { location.href = "cidade.html?nome=" + encodeURIComponent(cidadeFoco.nome); return } if (foco) { mirar(foco.v); altAlvo = clamp(altDe(foco) * .26, ALT_MIN, .3) } };
     const bMais = $(".gt-mais"), bMenos = $(".gt-menos"); if (bMais) bMais.onclick = () => aproximar(.6); if (bMenos) bMenos.onclick = () => aproximar(1.6);
     // nomes das terras maiores (de longe) e dos lugares (de perto)
     const rotulos = [];
     P.pecas.filter(p => p.cel.length >= 120 || p.nome).sort((a, b) => a.n - b.n).forEach(p => { const b = document.createElement("button"); b.type = "button"; b.className = "gt-rot"; b.innerHTML = "<i></i><span></span>";
       b.querySelector("span").textContent = nomeDe(p); b.onclick = () => focar(p); sobre.appendChild(b); rotulos.push({ p, el: b, v: p.v, terra: true }) });
-    P.lugares.forEach(l => { const b = document.createElement("span"); b.className = "gt-rot gt-lugar"; b.innerHTML = "<i></i><span></span>"; b.querySelector("span").textContent = l.nome; sobre.appendChild(b); rotulos.push({ el: b, v: l.v, terra: false }) });
+    P.lugares.forEach(l => { const cid = temCidade(l), b = document.createElement(cid ? "button" : "span"); if (cid) { b.type = "button"; b.onclick = () => focarCidade(l) } b.className = "gt-rot gt-lugar" + (cid ? " gt-cidade" : ""); b.innerHTML = "<i></i><span></span>"; b.querySelector("span").textContent = l.nome; sobre.appendChild(b); rotulos.push({ el: b, v: l.v, terra: false }) });
 
     // montar depois de pintar o aviso
     setTimeout(() => {

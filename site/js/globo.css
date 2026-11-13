@@ -28,6 +28,8 @@
 .gt-rot span{font:700 11px/1.2 var(--f-ui);letter-spacing:.15em;text-transform:uppercase;color:var(--perg);text-shadow:0 0 5px #000,0 0 2px #000,0 1px 8px #000}
 .gt-lugar i{width:4px;height:4px}
 .gt-lugar span{font-weight:400;font-size:12px;text-transform:none;letter-spacing:0;color:var(--ink)}
+.gt-cidade i{width:7px;height:7px}
+.gt-cidade span{font-weight:700;color:var(--perg)}
 .gt-rot.sel span{color:#fff}
 .gt-rot:focus-visible{outline:2px solid var(--perg);outline-offset:1px;border-radius:6px}
 .gt-cartao{position:absolute;z-index:3;left:max(14px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));width:min(320px,calc(100% - 28px));box-sizing:border-box;padding:16px;border-radius:14px;background:rgba(6,6,8,.72);border:1px solid var(--borda);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);display:grid;gap:12px;transition:opacity .3s ease,transform .4s cubic-bezier(.2,.8,.2,1)}
