@@ -266,7 +266,7 @@ const AR_F = "uniform vec3 uSol;varying vec3 vN;varying vec3 vV;varying vec3 vW;
   }
 
   /* ---------- a tela cheia: arrastar com embalo, aproximar no ponto do dedo, tocar numa terra, chegar perto ---------- */
-  function abrir(el, P, nomeMundo, aoFechar) {
+  function abrir(el, P, nomeMundo, aoFechar, irPara) {   // irPara: nome de um lugar com cidade, para abrir já em cima dele (volta da cidade)
     const $ = s => el.querySelector(s), sobre = $(".gt-sobre"), cartao = $(".gt-cartao"), dica = $(".gt-dica"), aviso = $(".gt-aviso");
     // o planeta da tela cheia é montado uma vez só e guardado: refazer a cada abertura estourava a memória do iPhone
     let tela = $(".gt-gl"); const reusar = !!(CHEIA && CHEIA.P === P && CHEIA.tela === tela);
@@ -332,7 +332,9 @@ const AR_F = "uniform vec3 uSol;varying vec3 vN;varying vec3 vV;varying vec3 vW;
       if (!C) { aviso.innerHTML = 'Não consegui abrir o mundo em 3D neste aparelho.<br><small style="opacity:.7;font-size:12px"></small>'; aviso.querySelector("small").textContent = String(erro && (erro.message || erro)).slice(0, 160); return }
       C.solW.copy(VERS[versao].sol); C.U.uExp.value = VERS[versao].exp;
       const maior = P.pecas.find(p => p.n === 1); yaw = maior ? Math.atan2(-maior.v.x, maior.v.z) + .35 : 0;
-      addEventListener("resize", medir); medir(); altAlvo = altBase; alt = altBase * 1.25; aviso.classList.add("some"); requestAnimationFrame(quadro);
+      addEventListener("resize", medir); medir(); altAlvo = altBase; alt = altBase * 1.25; aviso.classList.add("some");
+      if (irPara) { const l = P.lugares.find(l => l.nome === irPara && temCidade(l)); if (l) { focarCidade(l); alt = Math.min(alt, .45) } }
+      requestAnimationFrame(quadro);
     }, 60);
 
     const ptrs = new Map(); let arrasto = null, pinca = 0;

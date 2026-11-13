@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
-<meta name="sm-versao" content="20261112c">
+<meta name="sm-versao" content="20261112d">
 <link rel="icon" href="data:,">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mundo de UDA">
 <title>Mundo de UDA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
-<link rel="stylesheet" href="js/base.css?v=20261112c">
-<link rel="stylesheet" href="js/globo.css?v=20261112c">
+<link rel="stylesheet" href="js/base.css?v=20261112d">
+<link rel="stylesheet" href="js/globo.css?v=20261112d">
 </head>
 <body>
 <main class="pag" id="pag-login" hidden style="min-height:100dvh;align-content:center;max-width:440px">
@@ -128,10 +128,10 @@
 </div>
 
 <script src="js/supabase.js"></script>
-<script src="js/comum.js?v=20261112c"></script>
-<script src="js/brasa.js?v=20261112c"></script>
+<script src="js/comum.js?v=20261112d"></script>
+<script src="js/brasa.js?v=20261112d"></script>
 <script src="js/three.min.js?v=r128"></script>
-<script src="js/globo.js?v=20261112c"></script>   <!-- ?v= muda a cada versão: o Safari não mistura arquivo novo com velho -->
+<script src="js/globo.js?v=20261112d"></script>   <!-- ?v= muda a cada versão: o Safari não mistura arquivo novo com velho -->
 <script>
 let EU = null, FICHAS = [], CONVITE = null;
 /* sem e-mail: o usuário vira um endereço interno que não existe. Quem ainda entra com e-mail (o Lucas) digita o e-mail mesmo. */
@@ -271,13 +271,15 @@ $("#bt-atualizar").onclick = smAtualizarApp;
 { const v = SM_VERSAO.replace(/^\d{4}(\d\d)(\d\d)(\w*)$/, "versão $2/$1 $3"); $("#versao-txt").textContent = v; $("#globo-tela .gt-versao").textContent = v }
 
 /* o mundo do Início: o pequeno gira no topo; o toque abre a tela cheia (o botão Voltar do celular fecha) */
-let GLOBO = null, GLOBO_INFO = null, GLOBO_ABERTO = null;
+let GLOBO = null, GLOBO_INFO = null, GLOBO_ABERTO = null, GLOBO_VOLTA = null;
 async function montarGlobo(mesas) {
   if (GLOBO) return;
   if (!window.THREE || typeof SMGlobo === "undefined") { $("#bt-globo").hidden = true; return }   // sem 3D neste aparelho: o resto do Início segue igual
   GLOBO_INFO = await SMGlobo.carregarDoInicio(EU, mesas);
   $("#globo-legenda").textContent = "Mundo de UDA · toque para explorar";
   try { GLOBO = SMGlobo.mini($("#globo-mini"), GLOBO_INFO) } catch (e) { console.error(e); $("#bt-globo").hidden = true }
+  /* quem volta da cidade (cidade.html) cai de novo no mundo aberto, em cima do lugar de onde saiu */
+  try { const v = sessionStorage.getItem("sm-volta-cidade"); if (v) { sessionStorage.removeItem("sm-volta-cidade"); if (GLOBO) { GLOBO_VOLTA = v; $("#bt-globo").onclick() } } } catch (e) { console.error(e) }
 }
 function fecharGlobo() {
   if (!GLOBO_ABERTO) return;
@@ -294,7 +296,7 @@ $("#bt-globo").onclick = () => {
   GLOBO.pausar(); $("#globo-tela").hidden = false; document.documentElement.style.overflow = "hidden";
   history.pushState({ globo: 1 }, "", "#mundo");
   /* Fechar esconde na hora; depois tira o "#mundo" do histórico (o popstate que vem não faz mais nada) */
-  GLOBO_ABERTO = SMGlobo.abrir($("#globo-tela"), GLOBO.P, "Mundo de UDA", pedirFecharGlobo);
+  GLOBO_ABERTO = SMGlobo.abrir($("#globo-tela"), GLOBO.P, "Mundo de UDA", pedirFecharGlobo, GLOBO_VOLTA); GLOBO_VOLTA = null;
   setTimeout(() => $("#globo-tela .gt-fechar").focus(), 0);
 };
 addEventListener("popstate", fecharGlobo);   // o Voltar do celular fecha o mundo
