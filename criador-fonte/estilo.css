@@ -220,3 +220,11 @@ body{--x-line:var(--line);--x-acc:var(--acc);--x-on:var(--paper);--x-bg:var(--pa
 .cx-sel.gasta{color:var(--acc);border-color:var(--acc)}
 .cx-mag.guarda{border-left:4px dotted var(--line);background:transparent}
 .tag.livre{border-color:var(--ok);color:var(--ok)}
+
+/* retrato */
+.bt-retrato{margin-top:10px;font:inherit;font-size:15px;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:999px;padding:6px 16px;cursor:pointer}
+.ret-grande{display:block;width:100%;max-width:520px;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid var(--line);margin:6px auto 10px}
+.ret-rot{display:block;font-weight:600;margin:10px 0 4px}
+#ret-ap{width:100%;min-height:84px;box-sizing:border-box}
+#ret-pose{width:100%;box-sizing:border-box;margin-top:6px}
+.nota.erro{color:#e7a08f}

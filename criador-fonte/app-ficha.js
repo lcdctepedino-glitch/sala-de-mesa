@@ -99,8 +99,9 @@ function abrirAtaque(P,a){
 
 var BROCHE='<svg class="broche" viewBox="-30 -30 60 60" aria-hidden="true"><circle r="27" fill="none" stroke="currentColor" stroke-width="2" opacity=".55"/><circle r="22" fill="none" stroke="currentColor" stroke-width="1"/><path d="M0 -24 L4 -4 L24 0 L4 4 L0 24 L-4 4 L-24 0 L-4 -4 Z" fill="currentColor" opacity=".55"/><path d="M0 -14 L2.5 -2.5 L14 0 L2.5 2.5 L0 14 L-2.5 2.5 L-14 0 L-2.5 -2.5 Z" transform="rotate(45)" fill="currentColor" opacity=".8"/><circle r="3.5" fill="var(--acc)"/></svg>';
 function abaFicha(c,P){const m=MOD(P),f=atrFinal(P),pb=pbP(P),per=pericias(P),esp=new Set(especialDe(P)),j=P.jogo,nv=NV(P);
-  const cab=el("div",{class:"cab-f"});if(P.img)cab.append(el("div",{class:"foto"},el("img",{src:P.img,alt:""})));else{const s=el("div",{class:"broche-box"});s.innerHTML=BROCHE;cab.append(s)}
-  cab.append(el("div",{class:"nome"},P.nome||"Sem nome"),el("div",{class:"cls"},"Nível "+nv+" · "+resumoCurto(P)+(P.tend?" · "+TENDENCIAS.find(t=>t[0]===P.tend)[1]:"")));c.append(cab);
+  const cab=el("div",{class:"cab-f"});{const s=el("div",{class:"broche-box"});s.innerHTML=BROCHE;cab.append(s)}
+  cab.append(el("div",{class:"nome"},P.nome||"Sem nome"),el("div",{class:"cls"},"Nível "+nv+" · "+resumoCurto(P)+(P.tend?" · "+TENDENCIAS.find(t=>t[0]===P.tend)[1]:"")),
+    el("button",{type:"button",class:"bt-retrato",onclick:()=>P.img?folhaRetrato(P):folhaGerar(P)},P.img?"Ver retrato":"Criar retrato"));c.append(cab);
   if(nv<NIVEL_MAX)c.append(el("button",{class:"bt largo",type:"button",onclick:abrirSubir},"Subir para o nível "+(nv+1)));
   const per2=k=>m[SK.find(s=>s[0]===k)[1]]+(per.has(k)?pb:0)+(esp.has(k)?pb:0)+(!per.has(k)&&nC(P,"bardo")>=2?Math.floor(pb/2):0);
   c.append(secT("Atributos","toque para aumentar · ● treinado"),el("div",{class:"attrs"},...ATR.map(x=>{const pr=salvProf(P,x);return el("button",{type:"button",class:"attr","aria-label":ATR_N[x]+": tocar para aumentar",onclick:()=>folhaAtr(P,x)},el("small",{},x),el("b",{},sinal(m[x])),el("span",{class:"v"},String(f[x])),
@@ -124,3 +125,28 @@ function abaFicha(c,P){const m=MOD(P),f=atrFinal(P),pb=pbP(P),per=pericias(P),es
   c.append(secT("Guardar a ficha"),el("p",{class:"nota"},"A ficha fica guardada neste aparelho. Para não perder, copie e mande para você mesmo ou para o mestre no WhatsApp. A imagem não vai junto no texto."),
     el("div",{class:"linha"},el("button",{class:"bt",type:"button",onclick:e=>copiarFicha(P,e.currentTarget)},"Copiar ficha"),el("button",{class:"bt sec",type:"button",onclick:e=>confirmar(e.currentTarget,()=>{delete DB.lista[P.id];DB.atual=null;gravar(true);mostrar("inicio")})},"Apagar personagem")),
     el("textarea",{id:"cod-manual",hidden:true,"aria-label":"Texto da ficha para copiar",style:"width:100%;margin-top:8px;min-height:90px;font-size:13px"}),el("p",{class:"nota",id:"st-copiar"}))}
+
+/* ================= Retrato: ver e gerar com IA (função monstro-imagem, estilo personagem) ================= */
+const POSES=[["busto","Busto","head and shoulders portrait"],["corpo","Corpo inteiro","full body standing portrait"],["acao","Em ação","dynamic action pose, full figure"],["livre","Outra",""]];
+const GER={pose:"busto",poseTxt:"",img:null,rodando:false,erro:""};
+function folhaRetrato(P){folha("Retrato",P.nome||"Sem nome",[el("img",{src:P.img,alt:"Retrato do personagem",class:"ret-grande"}),
+  NUVEM.soVer?null:el("div",{class:"linha"},el("button",{type:"button",class:"bt",onclick:()=>folhaGerar(P)},"Trocar retrato"),el("button",{type:"button",class:"bt sec",onclick:()=>{fecharFolha();$("#arq-img").click()}},"Enviar uma imagem"))].filter(Boolean))}
+function textoRetrato(P){const ps=POSES.find(p=>p[0]===GER.pose);const ap=(P.aparencia||"").trim();
+  const quem=[ES(P)&&ES(P).n,...Object.keys(niveisPorClasse(P)).map(k=>CLASSES[k].n)].filter(Boolean).join(" ");
+  return [GER.pose==="livre"?GER.poseTxt:ps[2],"RPG character, "+quem,ap].filter(Boolean).join(". ")}
+async function gerarRetrato(P){if(GER.rodando)return;const ap=(P.aparencia||"").trim();
+  if(ap.length<5){GER.erro="Escreva primeiro como o personagem é.";return folhaGerar(P)}
+  GER.rodando=true;GER.erro="";GER.img=null;folhaGerar(P);
+  try{const {data,error}=await sb.functions.invoke("monstro-imagem",{body:{descricao:textoRetrato(P),estilo:"personagem"}});
+    if(error){let m="";try{m=(await error.context.json()).erro}catch(x){}throw new Error(m||"Não consegui gerar agora. Confira a internet e tente de novo.")}
+    GER.img=data.imagem}catch(x){GER.erro=x.message}finally{GER.rodando=false;folhaGerar(P)}}
+async function usarRetrato(P){const b=await (await fetch(GER.img)).blob();P.img=await prepararImg(b);GER.img=null;gravar(true);salvarJogo();folhaRetrato(P)}
+function folhaGerar(P){const ta=el("textarea",{id:"ret-ap",placeholder:"Ex.: cabelo ruivo trançado, cicatriz no queixo, capa verde, arco nas costas","aria-label":"Aparência do personagem",value:P.aparencia||"",
+    oninput:e=>{P.aparencia=e.target.value.slice(0,800);gravar()}});
+  const livre=GER.pose==="livre"?el("input",{id:"ret-pose",type:"text",placeholder:"Ex.: sentado numa taverna, caneca na mão","aria-label":"Pose",value:GER.poseTxt,oninput:e=>{GER.poseTxt=e.target.value.slice(0,200)}}):null;
+  const res=GER.rodando?el("p",{class:"nota"},"Gerando o retrato… leva alguns segundos."):GER.img?el("div",{},el("img",{src:GER.img,alt:"Retrato gerado",class:"ret-grande"}),
+    el("div",{class:"linha"},el("button",{type:"button",class:"bt",onclick:()=>usarRetrato(P)},"Usar este retrato"),el("button",{type:"button",class:"bt sec",onclick:()=>gerarRetrato(P)},"Gerar outro"))):null;
+  folha(P.img?"Trocar retrato":"Criar retrato",P.nome||"Sem nome",[el("label",{class:"ret-rot"},"Como é o personagem",ta),
+    el("div",{class:"ret-rot"},"Pose"),chips(POSES.map(p=>[p[0],p[1]]),[GER.pose],1,n=>{if(n[0]){GER.pose=n[0];folhaGerar(P)}}),livre,
+    el("p",{class:"nota"},"A raça e a classe entram sozinhas, a partir da ficha."),GER.erro?el("p",{class:"nota erro"},GER.erro):null,
+    GER.rodando||GER.img?null:el("div",{class:"linha"},el("button",{type:"button",class:"bt",onclick:()=>gerarRetrato(P)},"Gerar")),res].filter(Boolean))}
