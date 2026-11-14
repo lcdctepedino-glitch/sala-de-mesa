@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="sm-versao" content="20261113i">
+<meta name="sm-versao" content="20261113j">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
 <link rel="icon" href="data:,">
@@ -354,9 +354,9 @@ function fazerDesenho(D) {
     if (mg.p.length) grupoAgua.push(mg.malha(MAT.UnevenBrick));
     grupoAgua.forEach(o => grupo.add(o)) }
   if (chaos.length) {
-    const comTextura = (base, metros) => { const m = base.clone(); ["map", "normalMap"].forEach(k => { if (m[k]) { m[k] = m[k].clone(); m[k].repeat.set(1 / metros, 1 / metros); m[k].needsUpdate = true } }); return m };
-    const MATC = { grama: comTextura(matGrama, 12.3), pedra: comTextura(MAT.UnevenBrick, 2.4), terra: new T.MeshStandardMaterial({ color: 0x7d6548, roughness: 1 }) }, CORC = { grama: "#6e9148", terra: "#8c7556", pedra: "#9a917e" };
-    chaos.forEach((c, i) => { const s = new T.Shape(c.p.map(p => new T.Vector2(p[0], -p[1]))), g = new T.ShapeGeometry(s, 8); g.rotateX(-Math.PI / 2); const o = new T.Mesh(g, MATC[c.t] || MATC.grama); o.position.y = .08 + i * .002; o.receiveShadow = true; grupo.add(o);
+    /* usa os mesmos materiais das ruas e do campo (copiar a textura deixava o chão preto no iPhone: a cópia saía antes da imagem chegar); a escala vai nas coordenadas */
+    const MATC = { grama: matGrama, pedra: MAT.UnevenBrick, terra: new T.MeshStandardMaterial({ color: 0x7d6548, roughness: 1 }) }, ESC = { grama: 1 / 3200, pedra: 1 / 2.4, terra: 1 }, CORC = { grama: "#6e9148", terra: "#8c7556", pedra: "#9a917e" };
+    chaos.forEach((c, i) => { const s = new T.Shape(c.p.map(p => new T.Vector2(p[0], -p[1]))), g = new T.ShapeGeometry(s, 8); g.rotateX(-Math.PI / 2); { const uv = g.attributes.uv, e = ESC[c.t] || ESC.grama; for (let k = 0; k < uv.count; k++) uv.setXY(k, uv.getX(k) * e, uv.getY(k) * e); uv.needsUpdate = true } const o = new T.Mesh(g, MATC[c.t] || MATC.grama); o.position.y = .08 + i * .002; o.receiveShadow = true; grupo.add(o);
       P.x.fillStyle = CORC[c.t] || CORC.grama; P.x.beginPath(); c.p.forEach((p, k) => { const X = (p[0] + meia) * P.k, Z = (p[1] + meia) * P.k; k ? P.x.lineTo(X, Z) : P.x.moveTo(X, Z) }); P.x.fill() }) }
   /* ruas de pedra; sobre a água ganham ponte com mureta (a mureta só enfeita: não trava quem sai da ponte) */
   ruas.forEach(l => { for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]], len = Math.hypot(b[0] - a[0], b[1] - a[1]), r = Math.atan2(b[1] - a[1], b[0] - a[0]); calc.faixa(a[0], a[1], b[0], b[1], 6, .1, 2.4); calc.disco(b[0], .1, b[1], 3, 3, 12, 2.4); P.ret((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, len + 1, 6, r, "#9a917e");
