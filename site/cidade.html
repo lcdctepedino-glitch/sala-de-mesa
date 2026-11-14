@@ -219,7 +219,7 @@ const LUZ = {
   dia: { topo: 0x3f7fd0, hor: 0xc6dcec, sol: 0xfff2dc, dir: [.55, .78, .42], fs: 2.5, ceu: 0xcfe0ff, chao: 0x8a7a62, fh: .95, n0: 70, n1: 430, exp: .95, nuv: 0xffffff, na: .9, vid: [0x1d2836, 0x2c3a4c] },
   anoitecer: { topo: 0x2a2a58, hor: 0xe89a6c, sol: 0xff8a45, dir: [-.84, .24, .34], fs: 2.1, ceu: 0x7f78c0, chao: 0x4a3a40, fh: .75, n0: 30, n1: 330, exp: 1.05, nuv: 0xffb694, na: .8, vid: [0x1a1c28, 0xffc56a] } };
 let luzAtual = (() => { try { return localStorage.getItem("sm-globo-luz2") === "dia" ? "dia" : "anoitecer" } catch (e) { return "anoitecer" } })(), dirSol = new T.Vector3();
-const NOME_LUGAR = (new URLSearchParams(location.search).get("nome") || "").trim().slice(0, 40);
+const NOME_LUGAR = (new URLSearchParams(location.search).get("nome") || "").trim().slice(0, 40), DESENHO = new URLSearchParams(location.search).has("desenho");
 function aplicarLuz(m) { luzAtual = m; const L = LUZ[m]; ceu.material.uniforms.topo.value.set(L.topo); ceu.material.uniforms.hor.value.set(L.hor); cena.fog.color.set(L.hor).convertSRGBToLinear(); cena.fog.near = L.n0; cena.fog.far = L.n1;
   sol.color.set(L.sol).convertSRGBToLinear(); sol.intensity = L.fs; dirSol.set(L.dir[0], L.dir[1], L.dir[2]).normalize(); hemi.color.set(L.ceu).convertSRGBToLinear(); hemi.groundColor.set(L.chao).convertSRGBToLinear(); hemi.intensity = L.fh; rd.toneMappingExposure = L.exp; matNuvem.uniforms.cor.value.set(L.nuv); matNuvem.uniforms.op.value = L.na;
   if (M) { const c0 = new T.Color(L.vid[0]).convertSRGBToLinear(), c1 = new T.Color(L.vid[1]).convertSRGBToLinear(); for (const im of M.vidros) { im.userData.luz.forEach((a, i) => im.setColorAt(i, a ? c1 : c0)); im.instanceColor.needsUpdate = true } }
@@ -314,12 +314,77 @@ function fazerVila() {
   grupo.add(pedra.malha(MAT.Brick), calc.malha(MAT.UnevenBrick)); L.construir(grupo, mundo); mundo.planta = P.c; return mundo;
 }
 
+/* ---------- cidade desenhada (beta, 13/11/2026): vem de cidade-beta.html pelo localStorage "sm-cidade-beta" ----------
+   D = { muralha: [[x,z],...] fechada | null, ruas: [[[x,z],...]], agua: [[[x,z],...]], predios: [{x,z,t}] }, metros, de -150 a 150 */
+function lerDesenho() { try { return JSON.parse(localStorage.getItem("sm-cidade-beta")) || null } catch (e) { return null } }
+const dSeg = (px, pz, a, b) => { const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((px - a[0]) * dx + (pz - a[1]) * dz) / L2)); return Math.hypot(px - a[0] - t * dx, pz - a[1] - t * dz) };
+const dLinha = (x, z, l) => { let d = 1e9; for (let i = 1; i < l.length; i++) d = Math.min(d, dSeg(x, z, l[i - 1], l[i])); return d };
+const dentroPol = (x, z, P) => { let d = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, zi] = P[i], [xj, zj] = P[j]; if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) d = !d } return d };
+function fazerDesenho(D) {
+  D = D || {}; const ruas = (D.ruas || []).filter(l => l.length > 1), agua = (D.agua || []).filter(l => l.length > 1), predios = D.predios || [], mur = D.muralha && D.muralha.length > 2 ? D.muralha : null;
+  const R = rng(13), meia = 150, P = Planta(1024, meia), grade = new Grade(meia, .25), grupo = new T.Group(), L = new Lote(), pedra = new GeoT(), calc = new GeoT(), praca = new GeoT();
+  const mundo = { nome: D.nome || "Minha cidade", meia, grade, grupo, limite: 146, inicio: { x: 0, z: 120, yaw: 0 }, abertas: [] };
+  chaoBase(grupo); P.x.fillStyle = "#6e9148"; P.x.fillRect(0, 0, 1024, 1024);
+  /* água: faixa larga e rasa; não dá para andar por cima */
+  if (agua.length) { const ga = new GeoT(); agua.forEach(l => { for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]], len = Math.hypot(b[0] - a[0], b[1] - a[1]), r = Math.atan2(b[1] - a[1], b[0] - a[0]), cx = (a[0] + b[0]) / 2, cz = (a[1] + b[1]) / 2;
+      ga.faixa(a[0], a[1], b[0], b[1], 9, .09, 6); ga.disco(b[0], .09, b[1], 4.5, 4.5, 14, 6); grade.ret(cx, cz, len + 1, 9, r, 1); grade.circ(b[0], b[1], 4.6, 1); P.ret(cx, cz, len + 1, 9, r, "#5f8fa8"); P.elipse(b[0], b[1], 4.5, 4.5, "#5f8fa8") } ga.disco(l[0][0], .09, l[0][1], 4.5, 4.5, 14, 6); grade.circ(l[0][0], l[0][1], 4.6, 1) });
+    const ma = new T.MeshStandardMaterial({ color: 0x3f6f8c, roughness: .15, metalness: .1 }), o = ga.malha(ma); o.castShadow = false; grupo.add(o) }
+  /* ruas de pedra */
+  ruas.forEach(l => { for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]], len = Math.hypot(b[0] - a[0], b[1] - a[1]), r = Math.atan2(b[1] - a[1], b[0] - a[0]); calc.faixa(a[0], a[1], b[0], b[1], 6, .05, 2.4); calc.disco(b[0], .05, b[1], 3, 3, 12, 2.4); P.ret((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, len + 1, 6, r, "#9a917e") } });
+  const naRua = (x, z, folga) => ruas.some(l => dLinha(x, z, l) < 3 + folga), naAgua = (x, z, folga) => agua.some(l => dLinha(x, z, l) < 4.5 + folga);
+  /* muralha: trechos de pedra com ameias; onde uma rua cruza vira portão com duas torres */
+  if (mur) {
+    const H = 11, pts = []; for (let i = 0; i < mur.length; i++) { const a = mur[i], b = mur[(i + 1) % mur.length], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4.5)); for (let k = 0; k < n; k++) pts.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]) }
+    const portoes = []; let desde = 99;
+    pts.forEach((a, i) => { const b = pts[(i + 1) % pts.length], cx = (a[0] + b[0]) / 2, cz = (a[1] + b[1]) / 2, len = Math.hypot(b[0] - a[0], b[1] - a[1]) + .3, r = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      if (naRua(cx, cz, 1.5)) { if (!portoes.some(p => Math.hypot(p[0] - cx, p[1] - cz) < 14)) portoes.push([cx, cz, r]); return }
+      pedra.caixa(cx, 0, cz, len, H, 3.4, r, 3); grade.ret(cx, cz, len, 4, r, 1); P.ret(cx, cz, len, 4, r, "#77705f");
+      [-.27, .27].forEach(k => { const q = rp(cx, cz, k * len, 1.35, r), q2 = rp(cx, cz, k * len, -1.35, r); pedra.caixa(q[0], H, q[1], len * .26, 1, .7, r, 3); pedra.caixa(q2[0], H, q2[1], len * .26, 1, .7, r, 3) });
+      if (++desde > 9) { desde = 0; pedra.caixa(cx, 0, cz, 5.4, H + 5, 5.4, r, 3); L.por("Roof_Tower_RoundTiles", mat(cx, H + 5, cz, -r)); grade.ret(cx, cz, 5.8, 5.8, r, 1); P.ret(cx, cz, 6, 6, r, "#a5492f") } });
+    portoes.forEach(([cx, cz, r]) => { [-1, 1].forEach(s => { const q = rp(cx, cz, s * 6.5, 0, r); pedra.caixa(q[0], 0, q[1], 6, H + 6, 6.4, r, 3); L.por("Roof_Tower_RoundTiles", mat(q[0], H + 6, q[1], -r, 1.12)); grade.ret(q[0], q[1], 6.4, 6.8, r, 1); P.ret(q[0], q[1], 6.5, 6.5, r, "#a5492f") }); pedra.caixa(cx, 6.2, cz, 9.4, H - 6.2 + 1, 3.6, r, 3) });
+    /* começa do lado de fora, em frente ao primeiro portão (ou ao sul) */
+    const cxm = mur.reduce((s, p) => s + p[0], 0) / mur.length, czm = mur.reduce((s, p) => s + p[1], 0) / mur.length, g = portoes[0];
+    if (g) { const dx = g[0] - cxm, dz = g[1] - czm, d = Math.hypot(dx, dz) || 1; mundo.inicio = { x: g[0] + dx / d * 14, z: g[1] + dz / d * 14, yaw: Math.atan2(dx, dz) } }
+    else { const zmax = Math.max(...mur.map(p => p[1])); mundo.inicio = { x: cxm, z: Math.min(140, zmax + 14), yaw: 0 } }
+  } else if (ruas.length) { const a = ruas[0][0], b = ruas[0][1]; mundo.inicio = { x: a[0], z: a[1], yaw: Math.atan2(a[0] - b[0], a[1] - b[1]) } }
+  /* prédios que você marcou */
+  const ocup = [];
+  predios.forEach(p => { const { x, z } = p, t = p.t || "casa";
+    const ang = ruas.length ? (() => { let best = null, bd = 1e9; ruas.forEach(l => { for (let i = 1; i < l.length; i++) { const d = dSeg(x, z, l[i - 1], l[i]); if (d < bd) { bd = d; best = [l[i - 1], l[i]] } } }); if (!best || bd > 30) return 0; const r = Math.atan2(best[1][1] - best[0][1], best[1][0] - best[0][0]); return -r } )() : 0;
+    if (t === "taverna") { casa(L, R, { x, z, rot: ang, W: 8, C: 12, n: 2, porta: "A", dentro: true, taverna: true, grade }); mundo.abertas.push({ x, z, r: 7.5, salao: 1 }); P.ret(x, z, 9.5, 13.5, -ang, "#a5492f"); ocup.push([x, z, 9]) }
+    else if (t === "torre") { casa(L, R, { x, z, rot: ang, W: 4, C: 4, n: 5, pedra: true, porta: "A", telhado: "Roof_Tower_RoundTiles" }); grade.ret(x, z, 4.4, 4.4, -ang, 1); P.ret(x, z, 5.4, 5.4, -ang, "#8a3d28"); ocup.push([x, z, 5]) }
+    else if (t === "templo") { casa(L, R, { x, z, rot: ang, W: 8, C: 12, n: 3, pedra: true, porta: "A" }); grade.ret(x, z, 8.5, 12.5, -ang, 1); const q = rp(x, z, 0, -7.5, -ang); casa(L, R, { x: q[0], z: q[1], rot: ang, W: 4, C: 4, n: 6, pedra: true, porta: "A", telhado: "Roof_Tower_RoundTiles" }); grade.ret(q[0], q[1], 4.4, 4.4, -ang, 1); P.ret(x, z, 9.5, 13.5, -ang, "#8a3d28"); ocup.push([x, z, 11]) }
+    else if (t === "praca") { praca.disco(x, .11, z, 12, 12, 40, 3.2); fonte(pedra, grade, x, z); [[-7, -5, .5], [7.5, -4, -.5], [-8, 5, 2.3]].forEach(b => barraca(L, grade, R, x + b[0], z + b[1], b[2])); P.elipse(x, z, 12, 12, "#b1a78f"); ocup.push([x, z, 14]) }
+    else { casa(L, R, { x, z, rot: ang, W: 6, C: 10, n: 2, porta: "A", dentro: true, grade }); mundo.abertas.push({ x, z, r: 6.5, W: 6, C: 10, rot: ang }); P.ret(x, z, 7.4, 11.4, -ang, "#b5512f"); ocup.push([x, z, 7]) } });
+  /* o resto do espaço dentro da muralha ganha casas, viradas para a rua mais perto */
+  if (mur) {
+    const xs = mur.map(p => p[0]), zs = mur.map(p => p[1]); let nCasas = 0;
+    const livre = (cx, cz, raio) => { for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283, x = cx + Math.cos(a) * raio, z = cz + Math.sin(a) * raio; if (!dentroPol(x, z, mur) || dLinha(x, z, [...mur, mur[0]]) < 6.5) return false } return !naRua(cx, cz, raio + .6) && !naAgua(cx, cz, raio + .8) && !ocup.some(o => Math.hypot(o[0] - cx, o[1] - cz) < o[2] + raio + 1.5) && !grade.ver(cx, cz) };
+    for (let z = Math.min(...zs) + 8; z < Math.max(...zs) - 6; z += 11) for (let x = Math.min(...xs) + 8; x < Math.max(...xs) - 6; x += 9.5) {
+      const cx = x + (R() - .5) * 1.5, cz = z + (R() - .5) * 1.5, ta = R() < .55, W = ta ? (R() < .5 ? 4 : 6) : 6, C = ta ? 8 : [6, 8][Math.floor(R() * 2)], raio = Math.max(W, C) / 2 + .4;
+      if (!livre(cx, cz, raio)) continue;
+      let rot = 0; if (ruas.length) { let bd = 1e9, best = null; ruas.forEach(l => { for (let i = 1; i < l.length; i++) { const d = dSeg(cx, cz, l[i - 1], l[i]); if (d < bd) { bd = d; best = [l[i - 1], l[i]] } } }); const a = best[0], b = best[1], dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((cx - a[0]) * dx + (cz - a[1]) * dz) / L2)); rot = Math.atan2(a[0] + t * dx - cx, a[1] + t * dz - cz) }
+      rot = Math.round(rot / (Math.PI / 2)) * (Math.PI / 2);   // casas alinhadas em ângulo reto: as peças do kit encaixam melhor
+      const dentro = R() < .3; casa(L, R, { x: cx, z: cz, rot, W, C, n: R() < .22 ? 1 : R() < .78 ? 2 : 3, porta: "A", dentro, grade });
+      if (dentro) mundo.abertas.push({ x: cx, z: cz, r: Math.max(W, C) / 2 + 1.5, W, C, rot }); else grade.ret(cx, cz, W + .5, C + .5, -rot, 1);
+      P.ret(cx, cz, W + 1.4, C + 1.4, -rot, ["#b5512f", "#a5492f", "#c05c35", "#9c4530"][nCasas++ % 4]); ocup.push([cx, cz, raio]) }
+  }
+  /* campo: árvores fora da muralha, longe das ruas e da água */
+  const arv = []; for (let i = 0; i < 170; i++) { const x = (R() - .5) * 2 * (meia - 6), z = (R() - .5) * 2 * (meia - 6); if ((mur && (dentroPol(x, z, mur) || dLinha(x, z, [...mur, mur[0]]) < 9)) || naRua(x, z, 2) || naAgua(x, z, 2) || ocup.some(o => Math.hypot(o[0] - x, o[1] - z) < o[2] + 3) || grade.ver(x, z)) continue; arv.push([x, z, 1.1 + R() * .9]); grade.circ(x, z, .6, 1); P.elipse(x, z, 2.4, 2.4, "#3f6f3a") }
+  if (arv.length) arvores(grupo, arv, R);
+  const ms = [pedra.malha(MAT.Brick), calc.malha(MAT.UnevenBrick), praca.malha(MAT.Brick)]; ms.forEach(m => { if (m.geometry.attributes.position.count) grupo.add(m) });
+  L.construir(grupo, mundo); mundo.planta = P.c;
+  /* não nascer em cima de algo */
+  if (grade.ver(mundo.inicio.x, mundo.inicio.z)) for (let r = 2; r < 60; r += 2) { let ok = false; for (let k = 0; k < 12 && !ok; k++) { const x = mundo.inicio.x + Math.cos(k / 12 * 6.283) * r, z = mundo.inicio.z + Math.sin(k / 12 * 6.283) * r; if (x * x + z * z < 140 * 140 && !grade.ver(x, z)) { mundo.inicio.x = x; mundo.inicio.z = z; ok = true } } if (ok) break }
+  return mundo;
+}
+
 /* ---------- jogador ---------- */
 const MUNDOS = {}, J = { x: 0, z: 0, yaw: 0, pit: 0, passo: 0 }, tec = {}, joy = { x: 0, y: 0 };
 let M = null, ultimo = 0, sombraEm = null;
 const palco = $("#palco"), gl = $("#gl"), dica = $("#dica"), app = $("#app"), toque = matchMedia("(pointer: coarse)").matches;
 function trocar(v) {
-  if (M) cena.remove(M.grupo); M = MUNDOS[v] || (MUNDOS[v] = v === "vila" ? fazerVila() : fazerMurada()); cena.add(M.grupo); aplicarLuz(luzAtual); J.x = M.inicio.x; J.z = M.inicio.z; J.yaw = M.inicio.yaw; J.pit = 0;
+  if (M) cena.remove(M.grupo); M = MUNDOS[v] || (MUNDOS[v] = v === "vila" ? fazerVila() : v === "desenho" ? fazerDesenho(lerDesenho()) : fazerMurada()); cena.add(M.grupo); aplicarLuz(luzAtual); J.x = M.inicio.x; J.z = M.inicio.z; J.yaw = M.inicio.yaw; J.pit = 0;
   $("#nome").textContent = NOME_LUGAR || M.nome; if (NOME_LUGAR) document.title = NOME_LUGAR + " · Mundo de UDA"; document.querySelectorAll("#versoes button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.v === v)));
   const q = $("#planta .quadro"), velho = q.querySelector("canvas"); if (velho) velho.remove(); q.insertBefore(M.planta, q.firstChild);
 }
@@ -366,10 +431,11 @@ document.querySelectorAll("#aparelho button").forEach(b => b.onclick = () => apa
 $("#bt-planta").onclick = () => { const p = $("#planta"); p.hidden = !p.hidden; $("#bt-planta").setAttribute("aria-pressed", String(!p.hidden)) };
 $("#planta").onclick = () => { $("#planta").hidden = true; $("#bt-planta").setAttribute("aria-pressed", "false") };
 new ResizeObserver(medir).observe(palco);
-document.querySelector(".grupo a").addEventListener("click", () => { try { sessionStorage.setItem("sm-volta-cidade", NOME_LUGAR || "Ipanema") } catch (e) { } });   // o Início reabre o mundo em cima deste lugar
+if (DESENHO) { const a = document.querySelector(".grupo a"); a.href = "cidade-beta.html"; a.textContent = "‹ Voltar ao desenho"; const v = $("#versoes"); if (v) v.hidden = true }
+else document.querySelector(".grupo a").addEventListener("click", () => { try { sessionStorage.setItem("sm-volta-cidade", NOME_LUGAR || "Ipanema") } catch (e) { } });   // o Início reabre o mundo em cima deste lugar
 window.__cidade = { abertas: () => M.abertas || [], pode: (x, z) => pode(x, z), ir(x, z, yaw, pit) { J.x = x; J.z = z; J.yaw = yaw || 0; J.pit = pit || 0 }, trocar, aplicarLuz, J, info: () => ({ tri: rd.info.render.triangles, chamadas: rd.info.render.calls }) };
 
-carregarKit().then(() => { materiais(); comuns(); aviso.textContent = "Erguendo a cidade…"; setTimeout(() => { try { trocar("murada"); aparelho("pc"); aviso.hidden = true; requestAnimationFrame(quadro) } catch (e) { console.error(e); aviso.textContent = "Não consegui erguer a cidade neste aparelho." } }, 30) })
+carregarKit().then(() => { materiais(); comuns(); aviso.textContent = "Erguendo a cidade…"; setTimeout(() => { try { trocar(DESENHO ? "desenho" : "murada"); aparelho("pc"); aviso.hidden = true; requestAnimationFrame(quadro) } catch (e) { console.error(e); aviso.textContent = "Não consegui erguer a cidade neste aparelho." } }, 30) })
   .catch(e => { console.error(e); aviso.textContent = "Não consegui buscar as peças da cidade. Recarregue a página." });
 })();
 </script>
