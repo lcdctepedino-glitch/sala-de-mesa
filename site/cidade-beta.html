@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
-<meta name="sm-versao" content="20261113h">
+<meta name="sm-versao" content="20261113i">
 <link rel="icon" href="data:,">
 <title>Desenhar cidade · Mundo de UDA</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
-<link rel="stylesheet" href="js/base.css?v=20261113h">
+<link rel="stylesheet" href="js/base.css?v=20261113i">
 <style>
 /* Cidade desenhada à mão (BETA, 13/11/2026). Escolhe o pincel e risca; "Ver em 3D" abre cidade.html?desenho=1.
    O desenho fica só neste aparelho (localStorage "sm-cidade-beta"); ainda não vai para o banco. */
@@ -24,7 +24,7 @@ canvas{touch-action:none;border-radius:10px;box-shadow:0 0 0 1px var(--line);max
 .tipos{display:flex;gap:6px;overflow-x:auto;padding:8px max(14px,env(safe-area-inset-left,0px)) 0}
 .tipos button{all:unset;cursor:pointer;flex:none;border:1px solid var(--line);border-radius:99px;padding:6px 12px;font-size:13px;color:var(--mute)}
 .tipos button[aria-pressed=true]{background:var(--perg);color:#1a1510;border-color:var(--perg);font-weight:700}
-.ferr{display:grid;grid-template-columns:repeat(6,1fr);padding:8px 4px 4px}
+.ferr{display:grid;grid-template-columns:repeat(7,1fr);padding:8px 4px 4px}
 .ferr button{all:unset;cursor:pointer;display:grid;justify-items:center;gap:3px;padding:6px 2px;font-size:12px;color:var(--mute);border-radius:10px}
 .ferr button[aria-pressed=true]{color:var(--perg);background:var(--card)}
 .ferr i{width:22px;height:22px;border-radius:6px;display:block}
@@ -50,9 +50,15 @@ addEventListener("visibilitychange", () => { if (!document.hidden) fetch("versao
     <button type="button" data-f="muralha" aria-pressed="true"><i style="border:3px solid #8a8170"></i>Muralha</button>
     <button type="button" data-f="rua" aria-pressed="false"><i style="background:linear-gradient(transparent 38%,#b9ad94 38% 62%,transparent 62%)"></i>Rua</button>
     <button type="button" data-f="agua" aria-pressed="false"><i style="background:linear-gradient(transparent 30%,#5f8fa8 30% 70%,transparent 70%)"></i>Água</button>
+    <button type="button" data-f="chao" aria-pressed="false"><i style="background:#9c8463;border-radius:6px"></i>Chão</button>
     <button type="button" data-f="predio" aria-pressed="false"><i style="background:#c05c35;border-radius:4px;transform:scale(.7)"></i>Prédio</button>
     <button type="button" data-f="mover" aria-pressed="false"><i style="border:1.6px solid var(--mute);border-radius:50%;background:radial-gradient(circle,var(--mute) 0 2px,transparent 3px)"></i>Mover</button>
     <button type="button" data-f="apagar" aria-pressed="false"><i style="border:1.6px dashed var(--mute);border-radius:50%"></i>Apagar</button>
+  </div>
+  <div class="tipos" id="tipos-chao" hidden role="group" aria-label="Tipo de chão">
+    <button type="button" data-c="grama" aria-pressed="false">Grama</button>
+    <button type="button" data-c="terra" aria-pressed="true">Terra</button>
+    <button type="button" data-c="pedra" aria-pressed="false">Pedra</button>
   </div>
   <div class="tipos" id="tipos" hidden role="group" aria-label="Tipo de prédio">
     <button type="button" data-t="casa" aria-pressed="true">Casa</button>
@@ -73,11 +79,11 @@ addEventListener("visibilitychange", () => { if (!document.hidden) fetch("versao
 
 <script>
 const $ = s => document.querySelector(s), cv = $("#cv"), x = cv.getContext("2d"), MEIA = 300, CHAVE = "sm-cidade-beta";
-const DICAS = { muralha: "Risque em volta da cidade. A muralha fecha sozinha. Dá para fazer várias: uma dentro da outra ou cidades vizinhas.", rua: "Risque as ruas. Onde a rua cruza a muralha nasce um portão; sem rua, o portão fica ao sul.", agua: "Risque um rio. Para um lago, risque em volta e volte ao começo. Rua por cima da água vira ponte.", predio: "Escolha o tipo e toque onde ele fica.", apagar: "Toque numa rua, rio ou prédio para apagar.", mover: "Arraste algo que já está no desenho para mudá-lo de lugar. Toque num prédio para girar. Arrastando o vazio, você anda pelo desenho." };
-let F = "muralha", TIPO = "casa", D = ler(), HIST = [], traco = null, LIMPAR = 0;
-function ler() { try { const d = JSON.parse(localStorage.getItem(CHAVE)); if (d && typeof d === "object") return { nome: d.nome || "Minha cidade", encher: !!d.encher, muralhas: d.muralhas || (d.muralha ? [d.muralha] : []), ruas: d.ruas || [], agua: d.agua || [], predios: d.predios || [] } } catch (e) { } return exemplo() }
+const DICAS = { muralha: "Risque em volta da cidade. A muralha fecha sozinha. Dá para fazer várias: uma dentro da outra ou cidades vizinhas.", rua: "Risque as ruas. Onde a rua cruza a muralha nasce um portão; sem rua, o portão fica ao sul.", agua: "Risque um rio. Para um lago, risque em volta e volte ao começo. Rua por cima da água vira ponte.", predio: "Escolha o tipo e toque onde ele fica.", chao: "Risque em volta da área. Ela vira chão, mesmo em cima da água: boa para ilha no lago.", apagar: "Toque numa rua, rio, prédio, muralha ou chão para apagar.", mover: "Arraste algo que já está no desenho para mudá-lo de lugar. Toque num prédio para girar. Arrastando o vazio, você anda pelo desenho." };
+let F = "muralha", TIPO = "casa", TCHAO = "terra", D = ler(), HIST = [], traco = null, LIMPAR = 0;
+function ler() { try { const d = JSON.parse(localStorage.getItem(CHAVE)); if (d && typeof d === "object") return { nome: d.nome || "Minha cidade", encher: !!d.encher, chao: d.chao || [], muralhas: d.muralhas || (d.muralha ? [d.muralha] : []), ruas: d.ruas || [], agua: d.agua || [], predios: d.predios || [] } } catch (e) { } return exemplo() }
 /* primeira vez: um exemplo pronto, para ver como funciona */
-function exemplo() { return { nome: "Minha cidade", encher: false, muralhas: [[[-70, -50], [0, -64], [70, -48], [82, 10], [55, 55], [-5, 62], [-62, 50], [-82, 5]]], ruas: [[[0, 140], [0, 0], [-60, -20]], [[0, 0], [70, -10]]], agua: [[[-140, -110], [-100, -80], [-110, 40], [-140, 120]]], predios: [{ x: 0, z: -2, t: "praca" }, { x: -14, z: -30, t: "taverna" }, { x: 30, z: -35, t: "templo" }] } }
+function exemplo() { return { nome: "Minha cidade", encher: false, chao: [], muralhas: [[[-70, -50], [0, -64], [70, -48], [82, 10], [55, 55], [-5, 62], [-62, 50], [-82, 5]]], ruas: [[[0, 140], [0, 0], [-60, -20]], [[0, 0], [70, -10]]], agua: [[[-140, -110], [-100, -80], [-110, 40], [-140, 120]]], predios: [{ x: 0, z: -2, t: "praca" }, { x: -14, z: -30, t: "taverna" }, { x: 30, z: -35, t: "templo" }] } }
 function gravar() { D.nome = $("#nome").value.trim() || "Minha cidade"; try { localStorage.setItem(CHAVE, JSON.stringify(D)) } catch (e) { } }
 function guardarHist() { HIST.push(JSON.stringify(D)); if (HIST.length > 60) HIST.shift() }
 $("#nome").value = D.nome; $("#nome").oninput = gravar;
@@ -96,6 +102,7 @@ function zoomEm(q, fator) { const antes = deCanvas(q); V.z *= fator; prender(); 
 function simplificar(P, tol) { if (P.length < 3) return P; const a = P[0], b = P[P.length - 1]; let im = 0, dm = 0; for (let i = 1; i < P.length - 1; i++) { const d = dSeg(P[i], a, b); if (d > dm) { dm = d; im = i } } return dm > tol ? simplificar(P.slice(0, im + 1), tol).slice(0, -1).concat(simplificar(P.slice(im), tol)) : [a, b] }
 function dSeg(p, a, b) { const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / L2)); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dz) }
 const lago = l => l.length >= 3 && Math.hypot(l[0][0] - l[l.length - 1][0], l[0][1] - l[l.length - 1][1]) < 15;   // risco de água que volta ao começo = lago (a cidade 3D usa a mesma regra)
+const dentro = (p, P) => { let d = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, zi] = P[i], [xj, zj] = P[j]; if ((zi > p[1]) !== (zj > p[1]) && p[0] < (xj - xi) * (p[1] - zi) / (zj - zi) + xi) d = !d } return d };
 const dLinha = (p, l) => { let d = 1e9; for (let i = 1; i < l.length; i++) d = Math.min(d, dSeg(p, l[i - 1], l[i])); return d };
 
 function desenhar() {
@@ -105,13 +112,15 @@ function desenhar() {
   if (V.z >= 3) grade(5, "rgba(0,0,0,.05)"); grade(25, "rgba(0,0,0,.1)");
   const linha = (l, cor, larg, fechar) => { if (!l || l.length < 2) return; x.strokeStyle = cor; x.lineWidth = larg * K; x.lineCap = x.lineJoin = "round"; x.beginPath(); l.forEach((p, i) => { const [a, b] = aTela(p); i ? x.lineTo(a, b) : x.moveTo(a, b) }); if (fechar) x.closePath(); x.stroke() };
   D.agua.forEach(l => { if (lago(l)) { x.fillStyle = "#4f7f96"; x.beginPath(); l.forEach((p, i) => { const [a, b] = aTela(p); i ? x.lineTo(a, b) : x.moveTo(a, b) }); x.closePath(); x.fill() } else linha(l, "#4f7f96", 9) });
+  const CORC = { grama: "#7ea356", terra: "#9c8463", pedra: "#aaa18c" };
+  D.chao.forEach(c => { x.fillStyle = CORC[c.t] || CORC.terra; x.beginPath(); c.p.forEach((p, i) => { const [a, b] = aTela(p); i ? x.lineTo(a, b) : x.moveTo(a, b) }); x.closePath(); x.fill(); x.strokeStyle = "rgba(0,0,0,.18)"; x.lineWidth = 1.5; x.stroke() });
   D.muralhas.forEach(m => { x.fillStyle = "rgba(230,216,181,.12)"; x.beginPath(); m.forEach((p, i) => { const [a, b] = aTela(p); i ? x.lineTo(a, b) : x.moveTo(a, b) }); x.closePath(); x.fill(); linha(m, "#7a7262", 3.4, true) });
   D.ruas.forEach(l => linha(l, "#b9ad94", 6));
   const COR = { casa: "#b5512f", taverna: "#a5492f", templo: "#8a3d28", torre: "#6e3424", praca: "#cfc3a6" }, TAM = { casa: [6, 10], taverna: [8, 12], templo: [8, 12], torre: [4, 4], praca: [24, 24] }, NOME = { casa: "Casa", taverna: "Taverna", templo: "Templo", torre: "Torre", praca: "Praça" };
   D.predios.forEach(p => { const [a, b] = aTela([p.x, p.z]), [w, h] = (TAM[p.t] || TAM.casa).map(v => v * K); x.fillStyle = COR[p.t] || COR.casa; if (p.t === "praca") { x.beginPath(); x.arc(a, b, w / 2, 0, 6.29); x.fill() } else { x.save(); x.translate(a, b); x.rotate((p.r || 0) * Math.PI / 180); x.fillRect(-w / 2, -h / 2, w, h); if (SEL === p) { x.strokeStyle = "#ffb070"; x.lineWidth = 3; x.strokeRect(-w / 2 - 3, -h / 2 - 3, w + 6, h + 6) } x.restore() }
     if (SEL === p && p.t === "praca") { x.strokeStyle = "#ffb070"; x.lineWidth = 3; x.beginPath(); x.arc(a, b, w / 2 + 3, 0, 6.29); x.stroke() }
     x.font = "600 " + Math.round(Math.max(18, Math.min(30, 4 * K))) + "px 'Atkinson Hyperlegible',sans-serif"; x.textAlign = "center"; x.lineWidth = 4; x.strokeStyle = "rgba(0,0,0,.6)"; x.strokeText(NOME[p.t], a, b - h / 2 - 6); x.fillStyle = "#f1ebe0"; x.fillText(NOME[p.t], a, b - h / 2 - 6) });
-  if (traco) linha(traco.p, F === "agua" ? "#5f8fa8" : F === "rua" ? "#b9ad94" : "#7a7262", F === "agua" ? 9 : F === "rua" ? 6 : 3.4);
+  if (traco) linha(traco.p, F === "agua" ? "#5f8fa8" : F === "rua" ? "#b9ad94" : F === "chao" ? "#c9b48e" : "#7a7262", F === "agua" ? 9 : F === "rua" ? 6 : F === "chao" ? 1.5 : 3.4);
 }
 
 /* dedos na tela: 1 dedo desenha (ou arrasta, com Mover); 2 dedos aproximam e arrastam, e cancelam o risco que tinha começado */
@@ -124,6 +133,7 @@ function pegar(p) {
   if (melhor) return melhor;
   [...D.ruas, ...D.agua].forEach(l => { const d = dLinha(p, l); if (d < dm) { dm = d; melhor = { mover: arrastaLinha(l) } } });
   D.muralhas.forEach(m => { const d = dLinha(p, [...m, m[0]]); if (d < dm) { dm = d; melhor = { mover: arrastaLinha(m) } } });
+  if (!melhor) for (let i = D.chao.length - 1; i >= 0; i--) if (dentro(p, D.chao[i].p)) return { mover: arrastaLinha(D.chao[i].p) };
   return melhor;
 }
 function mostrarGiro() { $("#giro").hidden = !SEL || SEL.t === "praca" || F !== "mover" }
@@ -147,11 +157,13 @@ const soltar = e => { DEDOS.delete(e.pointerId); if (DEDOS.size < 2) pinca = nul
   const comp = P.reduce((s, q, i) => i ? s + Math.hypot(q[0] - P[i - 1][0], q[1] - P[i - 1][1]) : 0, 0);
   if (P.length >= 2 && comp > 2) { guardarHist();
     if (F === "muralha") { if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < Math.max(4, 12 / V.z)) P.pop(); if (P.length >= 3) D.muralhas.push(P); else HIST.pop() }
+    else if (F === "chao") { if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < Math.max(4, 12 / V.z)) P.pop(); if (P.length >= 3) D.chao.push({ p: P, t: TCHAO }); else HIST.pop() }
     else (F === "rua" ? D.ruas : D.agua).push(P); gravar() }
   desenhar() };
 cv.addEventListener("pointerup", soltar); cv.addEventListener("pointercancel", soltar);
 /* computador: rodinha do mouse aproxima onde o mouse está */
 cv.addEventListener("wheel", e => { e.preventDefault(); zoomEm(pxCanvas(e), e.deltaY < 0 ? 1.2 : 1 / 1.2) }, { passive: false });
+document.querySelectorAll("#tipos-chao [data-c]").forEach(b => b.onclick = () => { TCHAO = b.dataset.c; document.querySelectorAll("#tipos-chao [data-c]").forEach(c => c.setAttribute("aria-pressed", String(c === b))) });
 $("#g-esq").onclick = () => girar(-15); $("#g-dir").onclick = () => girar(15); $("#g-90").onclick = () => girar(90);
 $("#z-mais").onclick = () => zoomEm([cv.width / 2, cv.height / 2], 1.5);
 $("#z-menos").onclick = () => zoomEm([cv.width / 2, cv.height / 2], 1 / 1.5);
@@ -162,14 +174,15 @@ function apagarPerto(p) {
   D.ruas.forEach((l, i) => { const d = dLinha(p, l); if (d < dm) { dm = d; melhor = () => D.ruas.splice(i, 1) } });
   D.agua.forEach((l, i) => { const d = dLinha(p, l); if (d < dm) { dm = d; melhor = () => D.agua.splice(i, 1) } });
   D.muralhas.forEach((m, i) => { const d = dLinha(p, [...m, m[0]]); if (d < dm) { dm = d; melhor = () => D.muralhas.splice(i, 1) } });
+  if (!melhor) for (let i = D.chao.length - 1; i >= 0; i--) if (dentro(p, D.chao[i].p)) { melhor = () => D.chao.splice(i, 1); break }
   if (melhor) { guardarHist(); melhor(); gravar(); desenhar() }
 }
 
-document.querySelectorAll(".ferr [data-f]").forEach(b => b.onclick = () => { F = b.dataset.f; document.querySelectorAll(".ferr [data-f]").forEach(c => c.setAttribute("aria-pressed", String(c === b))); $("#tipos").hidden = F !== "predio"; SEL = null; mostrarGiro(); desenhar(); $("#dica").textContent = DICAS[F] });
+document.querySelectorAll(".ferr [data-f]").forEach(b => b.onclick = () => { F = b.dataset.f; document.querySelectorAll(".ferr [data-f]").forEach(c => c.setAttribute("aria-pressed", String(c === b))); $("#tipos").hidden = F !== "predio"; $("#tipos-chao").hidden = F !== "chao"; SEL = null; mostrarGiro(); desenhar(); $("#dica").textContent = DICAS[F] });
 document.querySelectorAll("#tipos [data-t]").forEach(b => b.onclick = () => { TIPO = b.dataset.t; document.querySelectorAll("#tipos [data-t]").forEach(c => c.setAttribute("aria-pressed", String(c === b))) });
 $("#bt-desfazer").onclick = () => { const h = HIST.pop(); if (h) { D = JSON.parse(h); SEL = null; mostrarGiro(); gravar(); desenhar() } };
 $("#bt-limpar").onclick = e => { const b = e.currentTarget; if (!LIMPAR) { LIMPAR = 1; b.textContent = "Toque de novo"; setTimeout(() => { LIMPAR = 0; b.textContent = "Limpar" }, 2500); return }
-  LIMPAR = 0; b.textContent = "Limpar"; guardarHist(); D = { nome: D.nome, encher: D.encher, muralhas: [], ruas: [], agua: [], predios: [] }; SEL = null; mostrarGiro(); gravar(); desenhar() };
+  LIMPAR = 0; b.textContent = "Limpar"; guardarHist(); D = { nome: D.nome, encher: D.encher, chao: [], muralhas: [], ruas: [], agua: [], predios: [] }; SEL = null; mostrarGiro(); gravar(); desenhar() };
 $("#bt-3d").onclick = () => { gravar(); location.href = "cidade.html?desenho=1&v=" + encodeURIComponent((document.querySelector('meta[name="sm-versao"]') || {}).content || "") + "&nome=" + encodeURIComponent(D.nome) };
 $("#dica").textContent = DICAS[F]; gravar(); desenhar();
 </script>

@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="sm-versao" content="20261113h">
+<meta name="sm-versao" content="20261113i">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
 <link rel="icon" href="data:,">
@@ -336,7 +336,9 @@ function fazerDesenho(D) {
   const dentroAlguma = (x, z) => murs.some(m => dentroPol(x, z, m)), pertoMuralha = (x, z, d) => murs.some(m => dLinha(x, z, fechada(m)) < d);
   /* água: risco fechado = lago cheio; risco aberto = rio. Onde a rua passa por cima vira ponte de pedra e dá para atravessar */
   const lagos = agua.filter(l => l.length >= 3 && Math.hypot(l[0][0] - l[l.length - 1][0], l[0][1] - l[l.length - 1][1]) < 15), rios = agua.filter(l => !lagos.includes(l));
-  const naAgua = (x, z, folga) => rios.some(l => dLinha(x, z, l) < 4.5 + folga) || lagos.some(l => dentroPol(x, z, l) || dLinha(x, z, fechada(l)) < folga);
+  /* chão pintado (13/11): grama, terra ou pedra por cima da água; onde há chão não há água (ilha no lago) */
+  const chaos = (D.chao || []).filter(c => c && c.p && c.p.length > 2), naChao = (x, z) => chaos.some(c => dentroPol(x, z, c.p));
+  const naAgua = (x, z, folga) => !naChao(x, z) && (rios.some(l => dLinha(x, z, l) < 4.5 + folga) || lagos.some(l => dentroPol(x, z, l) || dLinha(x, z, fechada(l)) < folga));
   const pracas = predios.filter(p => p.t === "praca");   // praça em cima da água vira aterro
   if (agua.length) {   // marca a grade célula a célula, só na caixa em volta da água (a grade tem 2400 × 2400 células)
     const xs = agua.flat().map(p => p[0]), zs = agua.flat().map(p => p[1]), n = grade.n, c = grade.c, m = grade.m;
@@ -351,6 +353,11 @@ function fazerDesenho(D) {
     const mg = new GeoT(); rios.forEach(l => { for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]]; mg.faixa(a[0], a[1], b[0], b[1], 11, .03, 3) } }); lagos.forEach(l => { const q = fechada(l); for (let i = 1; i < q.length; i++) mg.faixa(q[i - 1][0], q[i - 1][1], q[i][0], q[i][1], 3, .03, 3) });
     if (mg.p.length) grupoAgua.push(mg.malha(MAT.UnevenBrick));
     grupoAgua.forEach(o => grupo.add(o)) }
+  if (chaos.length) {
+    const comTextura = (base, metros) => { const m = base.clone(); ["map", "normalMap"].forEach(k => { if (m[k]) { m[k] = m[k].clone(); m[k].repeat.set(1 / metros, 1 / metros); m[k].needsUpdate = true } }); return m };
+    const MATC = { grama: comTextura(matGrama, 12.3), pedra: comTextura(MAT.UnevenBrick, 2.4), terra: new T.MeshStandardMaterial({ color: 0x7d6548, roughness: 1 }) }, CORC = { grama: "#6e9148", terra: "#8c7556", pedra: "#9a917e" };
+    chaos.forEach((c, i) => { const s = new T.Shape(c.p.map(p => new T.Vector2(p[0], -p[1]))), g = new T.ShapeGeometry(s, 8); g.rotateX(-Math.PI / 2); const o = new T.Mesh(g, MATC[c.t] || MATC.grama); o.position.y = .08 + i * .002; o.receiveShadow = true; grupo.add(o);
+      P.x.fillStyle = CORC[c.t] || CORC.grama; P.x.beginPath(); c.p.forEach((p, k) => { const X = (p[0] + meia) * P.k, Z = (p[1] + meia) * P.k; k ? P.x.lineTo(X, Z) : P.x.moveTo(X, Z) }); P.x.fill() }) }
   /* ruas de pedra; sobre a água ganham ponte com mureta (a mureta só enfeita: não trava quem sai da ponte) */
   ruas.forEach(l => { for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]], len = Math.hypot(b[0] - a[0], b[1] - a[1]), r = Math.atan2(b[1] - a[1], b[0] - a[0]); calc.faixa(a[0], a[1], b[0], b[1], 6, .1, 2.4); calc.disco(b[0], .1, b[1], 3, 3, 12, 2.4); P.ret((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, len + 1, 6, r, "#9a917e");
       for (let t = 0; t <= len; t += 1.5) { const x = a[0] + (b[0] - a[0]) * t / len, z = a[1] + (b[1] - a[1]) * t / len; if (naAgua(x, z, .5)) { pedra.caixa(x, 0, z, 1.6, .12, 7, r, 3); [-1, 1].forEach(s => { const q = rp(x, z, 0, s * 3.4, r); pedra.caixa(q[0], 0, q[1], 1.6, .9, .4, r, 3) }) } } } });
@@ -363,7 +370,7 @@ function fazerDesenho(D) {
     if (!portoes.length) { const zmax = Math.max(...segs.map(s => s.cz)), xm = mur.reduce((t, p) => t + p[0], 0) / mur.length, s = segs.filter(s => s.cz > zmax - 4 && !naAgua(s.cx, s.cz, 1)).sort((a, b) => Math.abs(a.cx - xm) - Math.abs(b.cx - xm))[0] || segs[0]; portoes.push([s.cx, s.cz, s.r]) }
     let desde = 99;
     segs.forEach(({ cx, cz, len, r }) => {
-      if (naRua(cx, cz, 1.5) || portoes.some(p => Math.hypot(p[0] - cx, p[1] - cz) < 3.6) || naAgua(cx, cz, 1)) return;
+      if (naRua(cx, cz, 1.5) || portoes.some(p => Math.hypot(p[0] - cx, p[1] - cz) < 3.6) || (!naChao(cx, cz) && rios.some(l => dLinha(cx, cz, l) < 5.5))) return;   // só rio abre a muralha; em lago ela é construída
       pedra.caixa(cx, 0, cz, len, H, 3.4, r, 3); grade.ret(cx, cz, len, 4, r, 1); P.ret(cx, cz, len, 4, r, "#77705f");
       [-.27, .27].forEach(k => { const q = rp(cx, cz, k * len, 1.35, r), q2 = rp(cx, cz, k * len, -1.35, r); pedra.caixa(q[0], H, q[1], len * .26, 1, .7, r, 3); pedra.caixa(q2[0], H, q2[1], len * .26, 1, .7, r, 3) });
       if (++desde > 9) { desde = 0; pedra.caixa(cx, 0, cz, 5.4, H + 5, 5.4, r, 3); L.por("Roof_Tower_RoundTiles", mat(cx, H + 5, cz, -r)); grade.ret(cx, cz, 5.8, 5.8, r, 1); P.ret(cx, cz, 6, 6, r, "#a5492f") } });
