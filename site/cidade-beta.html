@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
-<meta name="sm-versao" content="20261113f">
+<meta name="sm-versao" content="20261113g">
 <link rel="icon" href="data:,">
 <title>Desenhar cidade · Mundo de UDA</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
-<link rel="stylesheet" href="js/base.css?v=20261113f">
+<link rel="stylesheet" href="js/base.css?v=20261113g">
 <style>
 /* Cidade desenhada à mão (BETA, 13/11/2026). Escolhe o pincel e risca; "Ver em 3D" abre cidade.html?desenho=1.
    O desenho fica só neste aparelho (localStorage "sm-cidade-beta"); ainda não vai para o banco. */
@@ -17,13 +17,14 @@ body{display:flex;flex-direction:column;overflow:hidden;background:#000}
 .cab{display:flex;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top,0px)) max(14px,env(safe-area-inset-right,0px)) 10px max(14px,env(safe-area-inset-left,0px));border-bottom:1px solid var(--line)}
 .cab input{flex:1;min-width:0;background:transparent;border:0;color:var(--titulo);font:600 19px var(--f-disp);padding:4px 0}
 .beta{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--brasa);border:1px solid rgba(255,176,112,.4);border-radius:99px;padding:2px 8px}
-.quadro{flex:1;min-height:0;display:grid;place-items:center;padding:10px;background:#0a0806}
+.zoom{position:absolute;right:16px;top:16px;z-index:2;display:flex;gap:6px;align-items:center}.zoom button{all:unset;cursor:pointer;min-width:38px;height:38px;padding:0 8px;box-sizing:border-box;display:grid;place-items:center;border-radius:10px;background:rgba(10,8,6,.82);border:1px solid var(--line);color:var(--ink);font-size:18px}.zoom #z-tudo{font-size:13px}.zoom span{font-size:12px;color:var(--ink);text-shadow:0 1px 2px #000}
+.quadro{position:relative;flex:1;min-height:0;display:grid;place-items:center;padding:10px;background:#0a0806}
 canvas{touch-action:none;border-radius:10px;box-shadow:0 0 0 1px var(--line);max-width:100%;max-height:100%;aspect-ratio:1}
 .dica{font-size:13px;color:var(--mute);text-align:center;padding:6px 14px 0;min-height:24px}
 .tipos{display:flex;gap:6px;overflow-x:auto;padding:8px max(14px,env(safe-area-inset-left,0px)) 0}
 .tipos button{all:unset;cursor:pointer;flex:none;border:1px solid var(--line);border-radius:99px;padding:6px 12px;font-size:13px;color:var(--mute)}
 .tipos button[aria-pressed=true]{background:var(--perg);color:#1a1510;border-color:var(--perg);font-weight:700}
-.ferr{display:grid;grid-template-columns:repeat(5,1fr);padding:8px 4px 4px}
+.ferr{display:grid;grid-template-columns:repeat(6,1fr);padding:8px 4px 4px}
 .ferr button{all:unset;cursor:pointer;display:grid;justify-items:center;gap:3px;padding:6px 2px;font-size:12px;color:var(--mute);border-radius:10px}
 .ferr button[aria-pressed=true]{color:var(--perg);background:var(--card)}
 .ferr i{width:22px;height:22px;border-radius:6px;display:block}
@@ -49,6 +50,7 @@ addEventListener("visibilitychange", () => { if (!document.hidden) fetch("versao
     <button type="button" data-f="rua" aria-pressed="false"><i style="background:linear-gradient(transparent 38%,#b9ad94 38% 62%,transparent 62%)"></i>Rua</button>
     <button type="button" data-f="agua" aria-pressed="false"><i style="background:linear-gradient(transparent 30%,#5f8fa8 30% 70%,transparent 70%)"></i>Água</button>
     <button type="button" data-f="predio" aria-pressed="false"><i style="background:#c05c35;border-radius:4px;transform:scale(.7)"></i>Prédio</button>
+    <button type="button" data-f="mover" aria-pressed="false"><i style="border:1.6px solid var(--mute);border-radius:50%;background:radial-gradient(circle,var(--mute) 0 2px,transparent 3px)"></i>Mover</button>
     <button type="button" data-f="apagar" aria-pressed="false"><i style="border:1.6px dashed var(--mute);border-radius:50%"></i>Apagar</button>
   </div>
   <div class="tipos" id="tipos" hidden role="group" aria-label="Tipo de prédio">
@@ -66,11 +68,11 @@ addEventListener("visibilitychange", () => { if (!document.hidden) fetch("versao
     <button class="bt pri" id="bt-3d" type="button">Ver em 3D</button>
   </div>
 </div>
-<div class="quadro"><canvas id="cv" width="900" height="900" aria-label="Planta da cidade: desenhe com o dedo ou o mouse"></canvas></div>
+<div class="quadro"><div class="zoom" role="group" aria-label="Zoom"><button type="button" id="z-mais" aria-label="Aproximar">+</button><button type="button" id="z-menos" aria-label="Afastar">−</button><button type="button" id="z-tudo">Ver tudo</button><span id="zoom-n"></span></div><canvas id="cv" width="900" height="900" aria-label="Planta da cidade: desenhe com o dedo ou o mouse"></canvas></div>
 
 <script>
 const $ = s => document.querySelector(s), cv = $("#cv"), x = cv.getContext("2d"), MEIA = 150, CHAVE = "sm-cidade-beta";
-const DICAS = { muralha: "Risque em volta da cidade. A muralha fecha sozinha quando você solta.", rua: "Risque as ruas. Onde a rua cruza a muralha nasce um portão; sem rua, o portão fica ao sul.", agua: "Risque um rio. Para um lago, risque em volta e volte ao começo. Rua por cima da água vira ponte.", predio: "Escolha o tipo e toque onde ele fica.", apagar: "Toque numa rua, rio ou prédio para apagar." };
+const DICAS = { muralha: "Risque em volta da cidade. A muralha fecha sozinha quando você solta.", rua: "Risque as ruas. Onde a rua cruza a muralha nasce um portão; sem rua, o portão fica ao sul.", agua: "Risque um rio. Para um lago, risque em volta e volte ao começo. Rua por cima da água vira ponte.", predio: "Escolha o tipo e toque onde ele fica.", apagar: "Toque numa rua, rio ou prédio para apagar.", mover: "Arraste para andar pelo desenho. Dois dedos aproximam e afastam." };
 let F = "muralha", TIPO = "casa", D = ler(), HIST = [], traco = null, LIMPAR = 0;
 function ler() { try { const d = JSON.parse(localStorage.getItem(CHAVE)); if (d && typeof d === "object") return { nome: d.nome || "Minha cidade", encher: !!d.encher, muralha: d.muralha || null, ruas: d.ruas || [], agua: d.agua || [], predios: d.predios || [] } } catch (e) { } return exemplo() }
 /* primeira vez: um exemplo pronto, para ver como funciona */
@@ -80,10 +82,16 @@ function guardarHist() { HIST.push(JSON.stringify(D)); if (HIST.length > 60) HIS
 $("#nome").value = D.nome; $("#nome").oninput = gravar;
 $("#encher").checked = !!D.encher; $("#encher").onchange = e => { D.encher = e.target.checked; gravar() };
 
-/* metros ⇄ tela */
-const k = () => cv.width / (2 * MEIA), aTela = p => [(p[0] + MEIA) * k(), (p[1] + MEIA) * k()];
-function aMundo(e) { const r = cv.getBoundingClientRect(); return [Math.round(((e.clientX - r.left) / r.width * 2 - 1) * MEIA * 10) / 10, Math.round(((e.clientY - r.top) / r.height * 2 - 1) * MEIA * 10) / 10] }
-/* risco à mão vira poucos pontos (Douglas-Peucker, 2,5 m) */
+/* metros ⇄ tela, com zoom (13/11): V.z = aproximação (1 = cidade inteira, até 8), V.x/V.y = ponto do mapa no meio da tela */
+const V = { z: 1, x: 0, y: 0 };
+const k = () => cv.width / (2 * MEIA) * V.z, aTela = p => [(p[0] - V.x) * k() + cv.width / 2, (p[1] - V.y) * k() + cv.height / 2];
+const pxCanvas = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * cv.width, (e.clientY - r.top) / r.height * cv.height] };
+const deCanvas = q => [Math.round(((q[0] - cv.width / 2) / k() + V.x) * 10) / 10, Math.round(((q[1] - cv.height / 2) / k() + V.y) * 10) / 10];
+const aMundo = e => deCanvas(pxCanvas(e));
+function prender() { const meia = MEIA - MEIA / V.z; V.z = Math.max(1, Math.min(8, V.z)); V.x = Math.max(-meia, Math.min(meia, V.x)); V.y = Math.max(-meia, Math.min(meia, V.y)) }
+/* aproxima mantendo parado o ponto q (em pixels do canvas) */
+function zoomEm(q, fator) { const antes = deCanvas(q); V.z *= fator; prender(); const depois = deCanvas(q); V.x += antes[0] - depois[0]; V.y += antes[1] - depois[1]; prender(); desenhar(); $("#zoom-n").textContent = V.z > 1.05 ? V.z.toFixed(1).replace(".", ",") + "×" : "" }
+/* risco à mão vira poucos pontos (Douglas-Peucker); com zoom a tolerância diminui e o traço fica mais fiel */
 function simplificar(P, tol) { if (P.length < 3) return P; const a = P[0], b = P[P.length - 1]; let im = 0, dm = 0; for (let i = 1; i < P.length - 1; i++) { const d = dSeg(P[i], a, b); if (d > dm) { dm = d; im = i } } return dm > tol ? simplificar(P.slice(0, im + 1), tol).slice(0, -1).concat(simplificar(P.slice(im), tol)) : [a, b] }
 function dSeg(p, a, b) { const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / L2)); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dz) }
 const lago = l => l.length >= 3 && Math.hypot(l[0][0] - l[l.length - 1][0], l[0][1] - l[l.length - 1][1]) < 15;   // risco de água que volta ao começo = lago (a cidade 3D usa a mesma regra)
@@ -91,30 +99,49 @@ const dLinha = (p, l) => { let d = 1e9; for (let i = 1; i < l.length; i++) d = M
 
 function desenhar() {
   const K = k(); x.fillStyle = "#6e9148"; x.fillRect(0, 0, cv.width, cv.height);
-  x.strokeStyle = "rgba(0,0,0,.08)"; x.lineWidth = 1; for (let m = -MEIA; m <= MEIA; m += 25) { const t = (m + MEIA) * K; x.beginPath(); x.moveTo(t, 0); x.lineTo(t, cv.height); x.moveTo(0, t); x.lineTo(cv.width, t); x.stroke() }
+  /* grade de 25 m; com bastante zoom ganha linhas de 5 m */
+  const grade = (passo, cor) => { x.strokeStyle = cor; x.lineWidth = 1; x.beginPath(); for (let m = -MEIA; m <= MEIA; m += passo) { const [t] = aTela([m, 0]), [, u] = aTela([0, m]); x.moveTo(t, 0); x.lineTo(t, cv.height); x.moveTo(0, u); x.lineTo(cv.width, u) } x.stroke() };
+  if (V.z >= 3) grade(5, "rgba(0,0,0,.05)"); grade(25, "rgba(0,0,0,.1)");
   const linha = (l, cor, larg, fechar) => { if (!l || l.length < 2) return; x.strokeStyle = cor; x.lineWidth = larg * K; x.lineCap = x.lineJoin = "round"; x.beginPath(); l.forEach((p, i) => { const [a, b] = aTela(p); i ? x.lineTo(a, b) : x.moveTo(a, b) }); if (fechar) x.closePath(); x.stroke() };
   D.agua.forEach(l => { if (lago(l)) { x.fillStyle = "#4f7f96"; x.beginPath(); l.forEach((p, i) => { const [a, b] = aTela(p); i ? x.lineTo(a, b) : x.moveTo(a, b) }); x.closePath(); x.fill() } else linha(l, "#4f7f96", 9) });
-  if (D.muralha) { x.fillStyle = "rgba(230,216,181,.12)"; x.beginPath(); D.muralha.forEach((p, i) => { const [a, b] = aTela(p); i ? x.lineTo(a, b) : x.moveTo(a, b) }); x.closePath(); x.fill(); linha(D.muralha, "#7a7262", 4, true) }
+  if (D.muralha) { x.fillStyle = "rgba(230,216,181,.12)"; x.beginPath(); D.muralha.forEach((p, i) => { const [a, b] = aTela(p); i ? x.lineTo(a, b) : x.moveTo(a, b) }); x.closePath(); x.fill(); linha(D.muralha, "#7a7262", 3.4, true) }
   D.ruas.forEach(l => linha(l, "#b9ad94", 6));
-  const COR = { casa: "#b5512f", taverna: "#a5492f", templo: "#8a3d28", torre: "#6e3424", praca: "#cfc3a6" }, TAM = { casa: 8, taverna: 12, templo: 13, torre: 6, praca: 22 }, NOME = { casa: "Casa", taverna: "Taverna", templo: "Templo", torre: "Torre", praca: "Praça" };
-  D.predios.forEach(p => { const [a, b] = aTela([p.x, p.z]), s = TAM[p.t] * K; x.fillStyle = COR[p.t] || COR.casa; if (p.t === "praca") { x.beginPath(); x.arc(a, b, s / 2, 0, 6.29); x.fill() } else x.fillRect(a - s / 2, b - s / 2, s, s);
-    x.font = "600 " + Math.round(13 * K / 3) + "px 'Atkinson Hyperlegible',sans-serif"; x.textAlign = "center"; x.lineWidth = 4; x.strokeStyle = "rgba(0,0,0,.6)"; x.strokeText(NOME[p.t], a, b - s / 2 - 5); x.fillStyle = "#f1ebe0"; x.fillText(NOME[p.t], a, b - s / 2 - 5) });
-  if (traco) linha(traco.p, F === "agua" ? "#5f8fa8" : F === "rua" ? "#b9ad94" : "#7a7262", F === "agua" ? 9 : F === "rua" ? 6 : 4);
+  const COR = { casa: "#b5512f", taverna: "#a5492f", templo: "#8a3d28", torre: "#6e3424", praca: "#cfc3a6" }, TAM = { casa: [6, 10], taverna: [8, 12], templo: [8, 12], torre: [4, 4], praca: [24, 24] }, NOME = { casa: "Casa", taverna: "Taverna", templo: "Templo", torre: "Torre", praca: "Praça" };
+  D.predios.forEach(p => { const [a, b] = aTela([p.x, p.z]), [w, h] = (TAM[p.t] || TAM.casa).map(v => v * K); x.fillStyle = COR[p.t] || COR.casa; if (p.t === "praca") { x.beginPath(); x.arc(a, b, w / 2, 0, 6.29); x.fill() } else x.fillRect(a - w / 2, b - h / 2, w, h);
+    x.font = "600 " + Math.round(Math.max(18, Math.min(30, 4 * K))) + "px 'Atkinson Hyperlegible',sans-serif"; x.textAlign = "center"; x.lineWidth = 4; x.strokeStyle = "rgba(0,0,0,.6)"; x.strokeText(NOME[p.t], a, b - h / 2 - 6); x.fillStyle = "#f1ebe0"; x.fillText(NOME[p.t], a, b - h / 2 - 6) });
+  if (traco) linha(traco.p, F === "agua" ? "#5f8fa8" : F === "rua" ? "#b9ad94" : "#7a7262", F === "agua" ? 9 : F === "rua" ? 6 : 3.4);
 }
 
-cv.addEventListener("pointerdown", e => { cv.setPointerCapture(e.pointerId); const p = aMundo(e);
+/* dedos na tela: 1 dedo desenha (ou arrasta, com Mover); 2 dedos aproximam e arrastam, e cancelam o risco que tinha começado */
+const DEDOS = new Map(); let pinca = null, arrasto = null;
+cv.addEventListener("pointerdown", e => { cv.setPointerCapture(e.pointerId); DEDOS.set(e.pointerId, pxCanvas(e));
+  if (DEDOS.size === 2) { traco = null; const [a, b] = [...DEDOS.values()]; pinca = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), m: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] }; desenhar(); return }
+  if (DEDOS.size > 2) return;
+  const p = aMundo(e);
+  if (F === "mover") { arrasto = pxCanvas(e); return }
   if (F === "predio") { guardarHist(); D.predios.push({ x: p[0], z: p[1], t: TIPO }); gravar(); desenhar(); return }
   if (F === "apagar") { apagarPerto(p); return }
   traco = { id: e.pointerId, p: [p] }; desenhar() });
-cv.addEventListener("pointermove", e => { if (!traco || e.pointerId !== traco.id) return; const p = aMundo(e), u = traco.p[traco.p.length - 1]; if (Math.hypot(p[0] - u[0], p[1] - u[1]) > 1.5) { traco.p.push(p); desenhar() } });
-const soltar = e => { if (!traco || e.pointerId !== traco.id) return; let P = simplificar(traco.p, 2.5); traco = null;
-  if (P.length >= 2 && Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) + P.length > 4) { guardarHist();
-    if (F === "muralha") { if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < 12) P.pop(); if (P.length >= 3) D.muralha = P; else HIST.pop() }
+cv.addEventListener("pointermove", e => { if (!DEDOS.has(e.pointerId)) return; DEDOS.set(e.pointerId, pxCanvas(e));
+  if (pinca && DEDOS.size === 2) { const [a, b] = [...DEDOS.values()], d = Math.hypot(a[0] - b[0], a[1] - b[1]), m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+    V.x -= (m[0] - pinca.m[0]) / k(); V.y -= (m[1] - pinca.m[1]) / k(); prender(); zoomEm(m, d / (pinca.d || d)); pinca = { d, m }; return }
+  if (arrasto) { const q = pxCanvas(e); V.x -= (q[0] - arrasto[0]) / k(); V.y -= (q[1] - arrasto[1]) / k(); arrasto = q; prender(); desenhar(); return }
+  if (!traco || e.pointerId !== traco.id) return; const p = aMundo(e), u = traco.p[traco.p.length - 1]; if (Math.hypot(p[0] - u[0], p[1] - u[1]) > 1.5 / V.z) { traco.p.push(p); desenhar() } });
+const soltar = e => { DEDOS.delete(e.pointerId); if (DEDOS.size < 2) pinca = null; if (!DEDOS.size) arrasto = null;
+  if (!traco || e.pointerId !== traco.id) return; let P = simplificar(traco.p, Math.max(.4, 2.5 / V.z)); traco = null;
+  const comp = P.reduce((s, q, i) => i ? s + Math.hypot(q[0] - P[i - 1][0], q[1] - P[i - 1][1]) : 0, 0);
+  if (P.length >= 2 && comp > 2) { guardarHist();
+    if (F === "muralha") { if (Math.hypot(P[0][0] - P[P.length - 1][0], P[0][1] - P[P.length - 1][1]) < Math.max(4, 12 / V.z)) P.pop(); if (P.length >= 3) D.muralha = P; else HIST.pop() }
     else (F === "rua" ? D.ruas : D.agua).push(P); gravar() }
   desenhar() };
 cv.addEventListener("pointerup", soltar); cv.addEventListener("pointercancel", soltar);
+/* computador: rodinha do mouse aproxima onde o mouse está */
+cv.addEventListener("wheel", e => { e.preventDefault(); zoomEm(pxCanvas(e), e.deltaY < 0 ? 1.2 : 1 / 1.2) }, { passive: false });
+$("#z-mais").onclick = () => zoomEm([cv.width / 2, cv.height / 2], 1.5);
+$("#z-menos").onclick = () => zoomEm([cv.width / 2, cv.height / 2], 1 / 1.5);
+$("#z-tudo").onclick = () => { V.z = 1; V.x = V.y = 0; zoomEm([cv.width / 2, cv.height / 2], 1) };
 function apagarPerto(p) {
-  let melhor = null, dm = 10;
+  let melhor = null, dm = Math.max(2, 10 / V.z);
   D.predios.forEach((q, i) => { const d = Math.hypot(q.x - p[0], q.z - p[1]); if (d < dm) { dm = d; melhor = () => D.predios.splice(i, 1) } });
   D.ruas.forEach((l, i) => { const d = dLinha(p, l); if (d < dm) { dm = d; melhor = () => D.ruas.splice(i, 1) } });
   D.agua.forEach((l, i) => { const d = dLinha(p, l); if (d < dm) { dm = d; melhor = () => D.agua.splice(i, 1) } });
