@@ -326,18 +326,35 @@ function fazerDesenho(D) {
   const mundo = { nome: D.nome || "Minha cidade", meia, grade, grupo, limite: 146, inicio: { x: 0, z: 120, yaw: 0 }, abertas: [] };
   chaoBase(grupo); P.x.fillStyle = "#6e9148"; P.x.fillRect(0, 0, 1024, 1024);
   /* água: faixa larga e rasa; não dá para andar por cima */
-  if (agua.length) { const ga = new GeoT(); agua.forEach(l => { for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]], len = Math.hypot(b[0] - a[0], b[1] - a[1]), r = Math.atan2(b[1] - a[1], b[0] - a[0]), cx = (a[0] + b[0]) / 2, cz = (a[1] + b[1]) / 2;
-      ga.faixa(a[0], a[1], b[0], b[1], 9, .09, 6); ga.disco(b[0], .09, b[1], 4.5, 4.5, 14, 6); grade.ret(cx, cz, len + 1, 9, r, 1); grade.circ(b[0], b[1], 4.6, 1); P.ret(cx, cz, len + 1, 9, r, "#5f8fa8"); P.elipse(b[0], b[1], 4.5, 4.5, "#5f8fa8") } ga.disco(l[0][0], .09, l[0][1], 4.5, 4.5, 14, 6); grade.circ(l[0][0], l[0][1], 4.6, 1) });
-    const ma = new T.MeshStandardMaterial({ color: 0x3f6f8c, roughness: .15, metalness: .1 }), o = ga.malha(ma); o.castShadow = false; grupo.add(o) }
-  /* ruas de pedra */
-  ruas.forEach(l => { for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]], len = Math.hypot(b[0] - a[0], b[1] - a[1]), r = Math.atan2(b[1] - a[1], b[0] - a[0]); calc.faixa(a[0], a[1], b[0], b[1], 6, .05, 2.4); calc.disco(b[0], .05, b[1], 3, 3, 12, 2.4); P.ret((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, len + 1, 6, r, "#9a917e") } });
-  const naRua = (x, z, folga) => ruas.some(l => dLinha(x, z, l) < 3 + folga), naAgua = (x, z, folga) => agua.some(l => dLinha(x, z, l) < 4.5 + folga);
-  /* muralha: trechos de pedra com ameias; onde uma rua cruza vira portão com duas torres */
+  const naRua = (x, z, folga) => ruas.some(l => dLinha(x, z, l) < 3 + folga);
+  /* água (13/11: corrigida): risco fechado = lago cheio; risco aberto = rio. Onde a rua passa por cima vira ponte de pedra e dá para atravessar */
+  const lagos = agua.filter(l => l.length >= 3 && Math.hypot(l[0][0] - l[l.length - 1][0], l[0][1] - l[l.length - 1][1]) < 15), rios = agua.filter(l => !lagos.includes(l));
+  const naAgua = (x, z, folga) => rios.some(l => dLinha(x, z, l) < 4.5 + folga) || lagos.some(l => dentroPol(x, z, l) || dLinha(x, z, [...l, l[0]]) < folga);
+  const pracas = predios.filter(p => p.t === "praca");   // praça em cima da água vira aterro
+  /* marca a grade célula a célula: água bloqueia, menos onde há rua (a ponte) */
+  if (agua.length) { const n = grade.n, c = grade.c, m = grade.m; for (let b = 0; b < n; b++) for (let a = 0; a < n; a++) { const x = (a + .5) * c - m, z = (b + .5) * c - m; if (naAgua(x, z, 0) && !naRua(x, z, .2) && !pracas.some(q => Math.hypot(q.x - x, q.z - z) < 12.5)) grade.d[b * n + a] = 1 } }
+  if (agua.length) { const ga = new GeoT(), Y = .06, grupoAgua = [];
+    rios.forEach(l => { for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]], len = Math.hypot(b[0] - a[0], b[1] - a[1]), r = Math.atan2(b[1] - a[1], b[0] - a[0]); ga.faixa(a[0], a[1], b[0], b[1], 9, Y, 6); ga.disco(b[0], Y, b[1], 4.5, 4.5, 16, 6); P.ret((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, len + 1, 9, r, "#4f7f96"); P.elipse(b[0], b[1], 4.5, 4.5, "#4f7f96") } ga.disco(l[0][0], Y, l[0][1], 4.5, 4.5, 16, 6); P.elipse(l[0][0], l[0][1], 4.5, 4.5, "#4f7f96") });
+    const ma = new T.MeshStandardMaterial({ color: 0x24485a, roughness: .08, metalness: .35, transparent: true, opacity: .9 });
+    if (ga.p.length) { const o = ga.malha(ma); o.castShadow = false; grupoAgua.push(o) }
+    lagos.forEach(l => { const s = new T.Shape(l.map(p => new T.Vector2(p[0], -p[1]))), g = new T.ShapeGeometry(s, 8); g.rotateX(-Math.PI / 2); const o = new T.Mesh(g, ma); o.position.y = Y; o.receiveShadow = true; grupoAgua.push(o);
+      P.x.fillStyle = "#4f7f96"; P.x.beginPath(); l.forEach((p, i) => { const X = (p[0] + 150) * P.k, Z = (p[1] + 150) * P.k; i ? P.x.lineTo(X, Z) : P.x.moveTo(X, Z) }); P.x.fill() });
+    /* margem de pedra escura em volta, para a água não parecer tinta */
+    const mg = new GeoT(); rios.forEach(l => { for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]]; mg.faixa(a[0], a[1], b[0], b[1], 11, .03, 3) } }); lagos.forEach(l => { const q = [...l, l[0]]; for (let i = 1; i < q.length; i++) mg.faixa(q[i - 1][0], q[i - 1][1], q[i][0], q[i][1], 3, .03, 3) });
+    if (mg.p.length) grupoAgua.push(mg.malha(MAT.UnevenBrick));
+    grupoAgua.forEach(o => grupo.add(o)) }
+  /* ruas de pedra; sobre a água ganham ponte com mureta */
+  ruas.forEach(l => { for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]], len = Math.hypot(b[0] - a[0], b[1] - a[1]), r = Math.atan2(b[1] - a[1], b[0] - a[0]); calc.faixa(a[0], a[1], b[0], b[1], 6, .1, 2.4); calc.disco(b[0], .1, b[1], 3, 3, 12, 2.4); P.ret((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, len + 1, 6, r, "#9a917e");
+      for (let t = 0; t <= len; t += 1.5) { const x = a[0] + (b[0] - a[0]) * t / len, z = a[1] + (b[1] - a[1]) * t / len; if (naAgua(x, z, .5)) { pedra.caixa(x, 0, z, 1.6, .12, 7, r, 3); [-1, 1].forEach(s => { const q = rp(x, z, 0, s * 3.4, r); pedra.caixa(q[0], 0, q[1], 1.6, .9, .4, r, 3) }) } } } });
+  /* muralha: trechos de pedra com ameias; onde uma rua cruza vira portão com duas torres; sem rua cruzando, abre um portão ao sul */
   if (mur) {
     const H = 11, pts = []; for (let i = 0; i < mur.length; i++) { const a = mur[i], b = mur[(i + 1) % mur.length], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4.5)); for (let k = 0; k < n; k++) pts.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]) }
-    const portoes = []; let desde = 99;
-    pts.forEach((a, i) => { const b = pts[(i + 1) % pts.length], cx = (a[0] + b[0]) / 2, cz = (a[1] + b[1]) / 2, len = Math.hypot(b[0] - a[0], b[1] - a[1]) + .3, r = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      if (naRua(cx, cz, 1.5)) { if (!portoes.some(p => Math.hypot(p[0] - cx, p[1] - cz) < 14)) portoes.push([cx, cz, r]); return }
+    const segs = pts.map((a, i) => { const b = pts[(i + 1) % pts.length]; return { cx: (a[0] + b[0]) / 2, cz: (a[1] + b[1]) / 2, len: Math.hypot(b[0] - a[0], b[1] - a[1]) + .3, r: Math.atan2(b[1] - a[1], b[0] - a[0]) } });
+    const portoes = []; segs.forEach(s => { if (naRua(s.cx, s.cz, 1.5) && !portoes.some(p => Math.hypot(p[0] - s.cx, p[1] - s.cz) < 14)) portoes.push([s.cx, s.cz, s.r]) });
+    if (!portoes.length) { const zmax = Math.max(...segs.map(s => s.cz)), xm = mur.reduce((t, p) => t + p[0], 0) / mur.length, s = segs.filter(s => s.cz > zmax - 4 && !naAgua(s.cx, s.cz, 1)).sort((a, b) => Math.abs(a.cx - xm) - Math.abs(b.cx - xm))[0] || segs[0]; portoes.push([s.cx, s.cz, s.r]) }   // sem rua: portão no meio do lado sul
+    let desde = 99;
+    segs.forEach(({ cx, cz, len, r }) => {
+      if (naRua(cx, cz, 1.5) || portoes.some(p => Math.hypot(p[0] - cx, p[1] - cz) < 3.6) || naAgua(cx, cz, 1)) return;
       pedra.caixa(cx, 0, cz, len, H, 3.4, r, 3); grade.ret(cx, cz, len, 4, r, 1); P.ret(cx, cz, len, 4, r, "#77705f");
       [-.27, .27].forEach(k => { const q = rp(cx, cz, k * len, 1.35, r), q2 = rp(cx, cz, k * len, -1.35, r); pedra.caixa(q[0], H, q[1], len * .26, 1, .7, r, 3); pedra.caixa(q2[0], H, q2[1], len * .26, 1, .7, r, 3) });
       if (++desde > 9) { desde = 0; pedra.caixa(cx, 0, cz, 5.4, H + 5, 5.4, r, 3); L.por("Roof_Tower_RoundTiles", mat(cx, H + 5, cz, -r)); grade.ret(cx, cz, 5.8, 5.8, r, 1); P.ret(cx, cz, 6, 6, r, "#a5492f") } });
@@ -433,7 +450,7 @@ $("#planta").onclick = () => { $("#planta").hidden = true; $("#bt-planta").setAt
 new ResizeObserver(medir).observe(palco);
 if (DESENHO) { const a = document.querySelector(".grupo a"); a.href = "cidade-beta.html"; a.textContent = "‹ Voltar ao desenho"; const v = $("#versoes"); if (v) v.hidden = true }
 else document.querySelector(".grupo a").addEventListener("click", () => { try { sessionStorage.setItem("sm-volta-cidade", NOME_LUGAR || "Ipanema") } catch (e) { } });   // o Início reabre o mundo em cima deste lugar
-window.__cidade = { abertas: () => M.abertas || [], pode: (x, z) => pode(x, z), ir(x, z, yaw, pit) { J.x = x; J.z = z; J.yaw = yaw || 0; J.pit = pit || 0 }, trocar, aplicarLuz, J, info: () => ({ tri: rd.info.render.triangles, chamadas: rd.info.render.calls }) };
+window.__cidade = { abertas: () => M.abertas || [], grade: () => M.grade, inicio: () => M.inicio, pode: (x, z) => pode(x, z), ir(x, z, yaw, pit) { J.x = x; J.z = z; J.yaw = yaw || 0; J.pit = pit || 0 }, trocar, aplicarLuz, J, info: () => ({ tri: rd.info.render.triangles, chamadas: rd.info.render.calls }) };
 
 carregarKit().then(() => { materiais(); comuns(); aviso.textContent = "Erguendo a cidade…"; setTimeout(() => { try { trocar(DESENHO ? "desenho" : "murada"); aparelho("pc"); aviso.hidden = true; requestAnimationFrame(quadro) } catch (e) { console.error(e); aviso.textContent = "Não consegui erguer a cidade neste aparelho." } }, 30) })
   .catch(e => { console.error(e); aviso.textContent = "Não consegui buscar as peças da cidade. Recarregue a página." });

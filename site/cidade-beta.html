@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
-<meta name="sm-versao" content="20261113c">
+<meta name="sm-versao" content="20261113d">
 <link rel="icon" href="data:,">
 <title>Desenhar cidade · Mundo de UDA</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
-<link rel="stylesheet" href="js/base.css?v=20261113c">
+<link rel="stylesheet" href="js/base.css?v=20261113d">
 <style>
 /* Cidade desenhada à mão (BETA, 13/11/2026). Escolhe o pincel e risca; "Ver em 3D" abre cidade.html?desenho=1.
    O desenho fica só neste aparelho (localStorage "sm-cidade-beta"); ainda não vai para o banco. */
@@ -65,7 +65,7 @@ button:focus-visible{outline:2px solid var(--brasa)}
 
 <script>
 const $ = s => document.querySelector(s), cv = $("#cv"), x = cv.getContext("2d"), MEIA = 150, CHAVE = "sm-cidade-beta";
-const DICAS = { muralha: "Risque em volta da cidade. A muralha fecha sozinha quando você solta.", rua: "Risque as ruas. Onde a rua cruza a muralha nasce um portão.", agua: "Risque um rio ou um lago.", predio: "Escolha o tipo e toque onde ele fica. O resto da cidade ganha casas sozinho.", apagar: "Toque numa rua, rio ou prédio para apagar." };
+const DICAS = { muralha: "Risque em volta da cidade. A muralha fecha sozinha quando você solta.", rua: "Risque as ruas. Onde a rua cruza a muralha nasce um portão; sem rua, o portão fica ao sul.", agua: "Risque um rio. Para um lago, risque em volta e volte ao começo. Rua por cima da água vira ponte.", predio: "Escolha o tipo e toque onde ele fica. O resto da cidade ganha casas sozinho.", apagar: "Toque numa rua, rio ou prédio para apagar." };
 let F = "muralha", TIPO = "casa", D = ler(), HIST = [], traco = null, LIMPAR = 0;
 function ler() { try { const d = JSON.parse(localStorage.getItem(CHAVE)); if (d && typeof d === "object") return { nome: d.nome || "Minha cidade", muralha: d.muralha || null, ruas: d.ruas || [], agua: d.agua || [], predios: d.predios || [] } } catch (e) { } return exemplo() }
 /* primeira vez: um exemplo pronto, para ver como funciona */
@@ -80,13 +80,14 @@ function aMundo(e) { const r = cv.getBoundingClientRect(); return [Math.round(((
 /* risco à mão vira poucos pontos (Douglas-Peucker, 2,5 m) */
 function simplificar(P, tol) { if (P.length < 3) return P; const a = P[0], b = P[P.length - 1]; let im = 0, dm = 0; for (let i = 1; i < P.length - 1; i++) { const d = dSeg(P[i], a, b); if (d > dm) { dm = d; im = i } } return dm > tol ? simplificar(P.slice(0, im + 1), tol).slice(0, -1).concat(simplificar(P.slice(im), tol)) : [a, b] }
 function dSeg(p, a, b) { const dx = b[0] - a[0], dz = b[1] - a[1], L2 = dx * dx + dz * dz || 1, t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / L2)); return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dz) }
+const lago = l => l.length >= 3 && Math.hypot(l[0][0] - l[l.length - 1][0], l[0][1] - l[l.length - 1][1]) < 15;   // risco de água que volta ao começo = lago (a cidade 3D usa a mesma regra)
 const dLinha = (p, l) => { let d = 1e9; for (let i = 1; i < l.length; i++) d = Math.min(d, dSeg(p, l[i - 1], l[i])); return d };
 
 function desenhar() {
   const K = k(); x.fillStyle = "#6e9148"; x.fillRect(0, 0, cv.width, cv.height);
   x.strokeStyle = "rgba(0,0,0,.08)"; x.lineWidth = 1; for (let m = -MEIA; m <= MEIA; m += 25) { const t = (m + MEIA) * K; x.beginPath(); x.moveTo(t, 0); x.lineTo(t, cv.height); x.moveTo(0, t); x.lineTo(cv.width, t); x.stroke() }
   const linha = (l, cor, larg, fechar) => { if (!l || l.length < 2) return; x.strokeStyle = cor; x.lineWidth = larg * K; x.lineCap = x.lineJoin = "round"; x.beginPath(); l.forEach((p, i) => { const [a, b] = aTela(p); i ? x.lineTo(a, b) : x.moveTo(a, b) }); if (fechar) x.closePath(); x.stroke() };
-  D.agua.forEach(l => linha(l, "#5f8fa8", 9));
+  D.agua.forEach(l => { if (lago(l)) { x.fillStyle = "#4f7f96"; x.beginPath(); l.forEach((p, i) => { const [a, b] = aTela(p); i ? x.lineTo(a, b) : x.moveTo(a, b) }); x.closePath(); x.fill() } else linha(l, "#4f7f96", 9) });
   if (D.muralha) { x.fillStyle = "rgba(230,216,181,.12)"; x.beginPath(); D.muralha.forEach((p, i) => { const [a, b] = aTela(p); i ? x.lineTo(a, b) : x.moveTo(a, b) }); x.closePath(); x.fill(); linha(D.muralha, "#7a7262", 4, true) }
   D.ruas.forEach(l => linha(l, "#b9ad94", 6));
   const COR = { casa: "#b5512f", taverna: "#a5492f", templo: "#8a3d28", torre: "#6e3424", praca: "#cfc3a6" }, TAM = { casa: 8, taverna: 12, templo: 13, torre: 6, praca: 22 }, NOME = { casa: "Casa", taverna: "Taverna", templo: "Templo", torre: "Torre", praca: "Praça" };
