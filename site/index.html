@@ -4,15 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
-<meta name="sm-versao" content="20261113e">
+<meta name="sm-versao" content="20261113f">
 <link rel="icon" href="data:,">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mundo de UDA">
 <title>Mundo de UDA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
-<link rel="stylesheet" href="js/base.css?v=20261113e">
-<link rel="stylesheet" href="js/globo.css?v=20261113e">
+<link rel="stylesheet" href="js/base.css?v=20261113f">
+<link rel="stylesheet" href="js/globo.css?v=20261113f">
 <style>
 /* abas do Início: barra fixa embaixo no celular; menu à esquerda a partir de 900px */
 #pag-inicio{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
@@ -108,7 +108,7 @@
     <div class="lista" id="l-mundos"></div>
     <div class="duas" style="margin-top:14px">
       <a class="bt" href="mundos.html">Criar mundo</a>
-      <a class="bt sec" href="cidade-beta.html">Desenhar cidade <small style="font-weight:400;opacity:.75">beta</small></a>
+      <a class="bt sec" href="cidade-beta.html" id="lk-cidade">Desenhar cidade <small style="font-weight:400;opacity:.75">beta</small></a>
     </div>
   </section>
 
@@ -162,10 +162,10 @@
 </div>
 
 <script src="js/supabase.js"></script>
-<script src="js/comum.js?v=20261113e"></script>
-<script src="js/brasa.js?v=20261113e"></script>
+<script src="js/comum.js?v=20261113f"></script>
+<script src="js/brasa.js?v=20261113f"></script>
 <script src="js/three.min.js?v=r128"></script>
-<script src="js/globo.js?v=20261113e"></script>   <!-- ?v= muda a cada versão: o Safari não mistura arquivo novo com velho -->
+<script src="js/globo.js?v=20261113f"></script>   <!-- ?v= muda a cada versão: o Safari não mistura arquivo novo com velho -->
 <script>
 let EU = null, FICHAS = [], CONVITE = null;
 /* sem e-mail: o usuário vira um endereço interno que não existe. Quem ainda entra com e-mail (o Lucas) digita o e-mail mesmo. */
@@ -322,6 +322,7 @@ function abrirAba(n) {
 document.querySelectorAll("#abas-app [data-aba]").forEach(b => b.onclick = () => abrirAba(b.dataset.aba));
 
 $("#bt-atualizar").onclick = smAtualizarApp;
+$("#lk-cidade").href = "cidade-beta.html?v=" + SM_VERSAO;   // a página da cidade abre sempre na versão do Início (o iPhone guardava a velha)
 { const v = SM_VERSAO.replace(/^\d{4}(\d\d)(\d\d)(\w*)$/, "versão $2/$1 $3"); $("#versao-txt").textContent = v; $("#globo-tela .gt-versao").textContent = v }
 
 /* o mundo do Início: o pequeno gira no topo; o toque abre a tela cheia (o botão Voltar do celular fecha) */
