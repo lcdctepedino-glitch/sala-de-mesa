@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="sm-versao" content="20261113k">
+<meta name="sm-versao" content="20261113l">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
 <link rel="icon" href="data:,">
@@ -412,8 +412,19 @@ function fazerDesenho(D) {
   if (arv.length) arvores(grupo, arv, R);
   const ms = [pedra.malha(MAT.Brick), calc.malha(MAT.UnevenBrick), praca.malha(MAT.Brick)]; ms.forEach(m => { if (m.geometry.attributes.position.count) grupo.add(m) });
   L.construir(grupo, mundo); mundo.planta = P.c;
-  /* não nascer em cima de algo */
-  if (grade.ver(mundo.inicio.x, mundo.inicio.z)) for (let r = 2; r < 60; r += 2) { let ok = false; for (let k = 0; k < 12 && !ok; k++) { const x = mundo.inicio.x + Math.cos(k / 12 * 6.283) * r, z = mundo.inicio.z + Math.sin(k / 12 * 6.283) * r; if (x * x + z * z < (meia - 10) ** 2 && !grade.ver(x, z)) { mundo.inicio.x = x; mundo.inicio.z = z; ok = true } } if (ok) break }
+  /* onde nascer (13/11): o ponto escolhido tem que estar livre E ter espaço em volta (antes podia cair numa faixa apertada entre a muralha e a água).
+     Ordem: o ponto do portão; depois pontos em cima das ruas, do lado de fora das muralhas, perto do portão; por fim qualquer ponto com espaço. */
+  const PERTO = 2.2, espaco = (x, z) => { const n = grade.n, i0 = grade.i(x), j0 = grade.i(z); if (i0 < 0 || j0 < 0 || i0 >= n || j0 >= n) return false; const s = j0 * n + i0; if (grade.d[s]) return false;
+    const vis = new Set([s]), q = [s]; let k = 0; while (k < q.length && q.length < 12000) { const c = q[k++], a = c % n, b = (c / n) | 0; for (const [da, db] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const A = a + da, B = b + db; if (A < 0 || B < 0 || A >= n || B >= n) continue; const j = B * n + A; if (vis.has(j) || grade.d[j]) continue; vis.add(j); q.push(j) } } return q.length >= 12000 };
+  const livreEm = (x, z) => [[0, 0], [PERTO, 0], [-PERTO, 0], [0, PERTO], [0, -PERTO]].every(([dx, dz]) => !grade.ver(x + dx, z + dz)) && espaco(x, z);
+  if (ruas.length || !livreEm(mundo.inicio.x, mundo.inicio.z)) {   // havendo rua, nasce sempre em cima dela
+    const alvo = [mundo.inicio.x, mundo.inicio.z], cand = [];
+    ruas.forEach(l => { for (let i = 1; i < l.length; i++) { const [a, b] = [l[i - 1], l[i]], len = Math.hypot(b[0] - a[0], b[1] - a[1]); for (let t = 0; t <= len; t += 2) { const x = a[0] + (b[0] - a[0]) * t / len, z = a[1] + (b[1] - a[1]) * t / len; if (!dentroAlguma(x, z)) cand.push([x, z, Math.atan2(a[0] - b[0], a[1] - b[1])]) } } });
+    cand.sort((p, q) => Math.hypot(p[0] - alvo[0], p[1] - alvo[1]) - Math.hypot(q[0] - alvo[0], q[1] - alvo[1]));
+    let achou = cand.find(c => livreEm(c[0], c[1]));
+    if (achou) { const g = PORTOES.length ? PORTOES[0].portoes[0] : null; mundo.inicio = { x: achou[0], z: achou[1], yaw: g ? Math.atan2(achou[0] - g[0], achou[1] - g[1]) : achou[2] } }
+    else for (let r = 4; r < meia && !achou; r += 4) for (let k = 0; k < 24 && !achou; k++) { const x = alvo[0] + Math.cos(k / 24 * 6.283) * r, z = alvo[1] + Math.sin(k / 24 * 6.283) * r; if (Math.abs(x) < meia - 10 && Math.abs(z) < meia - 10 && livreEm(x, z)) { achou = 1; mundo.inicio.x = x; mundo.inicio.z = z } }
+  }
   return mundo;
 }
 
