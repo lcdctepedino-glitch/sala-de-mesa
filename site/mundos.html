@@ -128,7 +128,7 @@ body.editando{overflow:hidden}
 <body>
 <!-- ======== Meus mundos ======== -->
 <main class="pag" id="lib" hidden>
-  <a class="lnk" href="index.html">‹ Início</a>
+  <a class="lnk" href="index.html?aba=mundos">‹ Mundos</a>
   <div style="display:grid;gap:6px"><h1>Meus mundos</h1><p class="mute">Os mundos são seus. Cada um pode valer para várias mesas, e cada mesa guarda o que os jogadores já descobriram.</p></div>
   <p class="msg erro" id="lib-erro" hidden></p>
   <section><div id="l-mundos"></div></section>
@@ -742,7 +742,7 @@ function caixaLugar(l) {
     <div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="mbt forte" data-acao="planta" data-id="${l.id}">${temP ? "Abrir a planta" : "Fazer a planta"}</button><button type="button" class="mbt" data-acao="apagar-lugar">Apagar lugar</button></div>`;
 }
 function caixasMesas() {
-  if (!MESAS.length) return `<p class="dica">Você ainda não é mestre de nenhuma mesa. Abra uma no Início e volte aqui.</p>`;
+  if (!MESAS.length) return `<p class="dica">Você ainda não é mestre de nenhuma mesa. Abra uma na aba Mesas e volte aqui.</p>`;
   return MESAS.map(m => `<label class="ck"><input type="checkbox" data-mesa="${m.id}" ${m.mundo_id === M.id ? "checked" : ""}> <span>${esc(m.nome)}${m.mundo_id && m.mundo_id !== M.id ? ` <small class="dica">(hoje usa outro mundo)</small>` : ""}</span></label>`).join("")
     + `<p class="dica">Cada mesa usa um mundo. O que os jogadores descobrem fica separado em cada mesa.</p>`;
 }

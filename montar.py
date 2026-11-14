@@ -10,7 +10,7 @@ def troca(t, velho, novo):
     return t.replace(velho, novo)
 
 corpo = ler("corpo.html")
-corpo = troca(corpo, '<div class="gut topo-ini">', '<div class="gut topo-ini">\n      <a class="lnk" href="index.html" style="display:inline-block;margin-bottom:6px">‹ Início</a>')
+corpo = troca(corpo, '<div class="gut topo-ini">', '<div class="gut topo-ini">\n      <a class="lnk" href="index.html?aba=personagens" style="display:inline-block;margin-bottom:6px">‹ Personagens</a>')
 corpo = troca(corpo, "As fichas ficam guardadas neste aparelho, neste navegador. Abra sempre pelo mesmo navegador e copie a ficha de vez em quando para não perder.",
               "As fichas ficam guardadas na sua conta e abrem em qualquer aparelho em que você entrar.")
 corpo = troca(corpo, "Recebeu uma ficha no WhatsApp ou perdeu a sua? Copie a mensagem inteira e cole aqui.",

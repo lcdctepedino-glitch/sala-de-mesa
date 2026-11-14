@@ -4,15 +4,35 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
-<meta name="sm-versao" content="20261113a">
+<meta name="sm-versao" content="20261113b">
 <link rel="icon" href="data:,">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Mundo de UDA">
 <title>Mundo de UDA</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
-<link rel="stylesheet" href="js/base.css?v=20261113a">
-<link rel="stylesheet" href="js/globo.css?v=20261113a">
+<link rel="stylesheet" href="js/base.css?v=20261113b">
+<link rel="stylesheet" href="js/globo.css?v=20261113b">
+<style>
+/* abas do Início: barra fixa embaixo no celular; menu à esquerda a partir de 900px */
+#pag-inicio{padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.aba-tit{font-family:var(--f-disp);font-size:30px;margin:0;color:var(--titulo)}
+.abas-app{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(4,1fr);background:rgba(8,6,4,.96);border-top:1px solid var(--line);
+  padding:6px max(4px,env(safe-area-inset-right,0px)) calc(8px + env(safe-area-inset-bottom,0px)) max(4px,env(safe-area-inset-left,0px));backdrop-filter:blur(8px)}
+.abas-marca{display:none}
+.abas-app button{all:unset;cursor:pointer;display:grid;justify-items:center;gap:3px;padding:6px 2px;font-size:12px;color:var(--mute);border-radius:10px}
+.abas-app svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.abas-app button[aria-current=page]{color:var(--perg)}
+.abas-app button:focus-visible{outline:2px solid var(--brasa)}
+@media (min-width:900px){
+  #pag-inicio{max-width:none;margin:0;padding-left:260px;padding-bottom:40px}
+  #pag-inicio>section{max-width:640px;width:100%}
+  .abas-app{top:0;right:auto;width:220px;grid-template-columns:none;align-content:start;gap:4px;border-top:0;border-right:1px solid var(--line);padding:24px 14px}
+  .abas-marca{display:block;font-family:var(--f-disp);font-size:24px;color:var(--titulo);margin:0 8px 18px}
+  .abas-app button{grid-template-columns:22px 1fr;justify-items:start;align-items:center;gap:12px;padding:10px 12px;font-size:15px}
+  .abas-app button[aria-current=page]{background:var(--card)}
+}
+</style>
 </head>
 <body>
 <main class="pag" id="pag-login" hidden style="min-height:100dvh;align-content:center;max-width:440px">
@@ -46,16 +66,21 @@
 </main>
 
 <main class="pag" id="pag-inicio" hidden>
-  <div class="topo"><div class="marca" style="font-size:30px">Mundo de UDA</div><button class="lnk" id="bt-sair" type="button">Sair</button></div>
-  <button class="globo-mini" id="bt-globo" type="button" aria-label="Abrir o mundo em 3D"><canvas id="globo-mini" aria-hidden="true"></canvas><span class="globo-legenda" id="globo-legenda">Toque para explorar o mundo</span></button>
-  <p class="mute" id="ola"></p>
+  <!-- barra de abas (13/11/2026, opção 2 escolhida por ele): embaixo no celular, menu à esquerda no computador -->
+  <nav class="abas-app" id="abas-app" aria-label="Seções">
+    <div class="abas-marca">Mundo de UDA</div>
+    <button type="button" data-aba="mesas"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="10" rx="2"/><path d="M6 17v3M18 17v3"/></svg>Mesas</button>
+    <button type="button" data-aba="personagens"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4.5 4.5-6.5 8-6.5s7 2 8 6.5"/></svg>Personagens</button>
+    <button type="button" data-aba="mundos"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/></svg>Mundos</button>
+    <button type="button" data-aba="conta"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>Conta</button>
+  </nav>
 
-  <section>
-    <h2>Minhas mesas</h2>
+  <section data-painel="mesas">
+    <div class="topo"><h1 class="aba-tit">Mesas</h1></div>
     <div class="lista" id="l-mesas"></div>
     <div class="duas" style="margin-top:14px">
-      <button class="bt" id="bt-entrar" type="button">Entrar numa mesa</button>
-      <button class="bt sec" id="bt-abrir" type="button">Abrir uma mesa</button>
+      <button class="bt" id="bt-entrar" type="button">Entrar com código</button>
+      <button class="bt sec" id="bt-abrir" type="button">Abrir nova</button>
     </div>
     <form class="caixa" id="f-entrar" hidden style="margin-top:12px">
       <label class="campo"><span>Código que o mestre passou</span><input id="in-cod" autocapitalize="characters" autocomplete="off" maxlength="12" style="letter-spacing:.12em"></label>
@@ -71,19 +96,27 @@
     </form>
   </section>
 
-  <section>
-    <h2>Meus mundos</h2>
-    <p class="nota">Mapas e lugares das suas campanhas. Um mundo pode valer para várias mesas.</p>
-    <a class="bt sec" href="mundos.html" style="margin-top:14px">Criar ou editar mundos</a>
-  </section>
-
-  <section>
-    <h2>Meus personagens</h2>
+  <section data-painel="personagens" hidden>
+    <div class="topo"><h1 class="aba-tit">Personagens</h1></div>
     <div class="lista" id="l-fichas"></div>
-    <a class="bt sec" href="criador.html" style="margin-top:14px">Criar ou editar personagens</a>
+    <a class="bt" href="criador.html" style="margin-top:14px">Criar personagem</a>
   </section>
 
-  <section id="s-chamar" hidden>
+  <section data-painel="mundos" hidden>
+    <div class="topo"><h1 class="aba-tit">Mundos</h1></div>
+    <button class="globo-mini" id="bt-globo" type="button" aria-label="Abrir o mundo em 3D"><canvas id="globo-mini" aria-hidden="true"></canvas><span class="globo-legenda" id="globo-legenda">Toque para explorar o mundo</span></button>
+    <div class="lista" id="l-mundos"></div>
+    <a class="bt" href="mundos.html" style="margin-top:14px">Criar mundo</a>
+  </section>
+
+  <section data-painel="conta" hidden>
+    <div class="topo"><h1 class="aba-tit">Conta</h1></div>
+    <p class="mute" id="ola"></p>
+    <button class="bt sec" id="bt-sair" type="button">Sair</button>
+    <p class="nota centro"><button class="lnk" id="bt-atualizar" type="button">Atualizar o app</button><br><span id="versao-txt"></span></p>
+  </section>
+
+  <section id="s-chamar" data-painel="conta" hidden>
     <h2>Chamar amigos</h2>
     <p class="nota">Gere um link e mande para um amigo. Ele abre, escolhe um usuário e uma senha, e a conta fica pronta. Cada link vale para uma pessoa, por 7 dias.</p>
     <button class="bt" id="bt-chamar" type="button" style="margin-top:14px">Chamar amigo</button>
@@ -93,8 +126,6 @@
     </div>
     <p class="msg" id="chamar-msg" role="status" style="margin-top:8px"></p>
   </section>
-
-  <p class="nota centro"><button class="lnk" id="bt-atualizar" type="button">Atualizar o app</button><br><span id="versao-txt"></span></p>
 </main>
 
 <!-- o mundo em tela cheia (abre pelo globo do Início) -->
@@ -128,10 +159,10 @@
 </div>
 
 <script src="js/supabase.js"></script>
-<script src="js/comum.js?v=20261113a"></script>
-<script src="js/brasa.js?v=20261113a"></script>
+<script src="js/comum.js?v=20261113b"></script>
+<script src="js/brasa.js?v=20261113b"></script>
 <script src="js/three.min.js?v=r128"></script>
-<script src="js/globo.js?v=20261113a"></script>   <!-- ?v= muda a cada versão: o Safari não mistura arquivo novo com velho -->
+<script src="js/globo.js?v=20261113b"></script>   <!-- ?v= muda a cada versão: o Safari não mistura arquivo novo com velho -->
 <script>
 let EU = null, FICHAS = [], CONVITE = null;
 /* sem e-mail: o usuário vira um endereço interno que não existe. Quem ainda entra com e-mail (o Lucas) digita o e-mail mesmo. */
@@ -230,13 +261,21 @@ async function depoisDoLogin() {
 async function telaInicio() {
   const s = await smSessao(); if (!s) { telaLogin(); return }
   EU = s.user;
-  $("#s-chamar").hidden = EU.id !== ADMIN;
   $("#pag-login").hidden = true; $("#pag-convite").hidden = true; $("#pag-inicio").hidden = false; SMBrasa.cena("brasas");
-  const [jog, mesas, fichas] = await Promise.all([
+  abrirAba(abaInicial());
+  const [jog, mesas, fichas, mundos] = await Promise.all([
     sb.from("jogadores").select("nome").eq("id", EU.id).maybeSingle(),
-    sb.from("mesas").select("id,nome,mestre_id").order("criado_em", { ascending: false }),
-    sb.from("fichas").select("id,nome,mesa_id,pid:dados->>id,pagina:dados->>pagina").eq("dono_id", EU.id).order("criado_em", { ascending: false })
+    sb.from("mesas").select("id,nome,mestre_id,mundo_id").order("criado_em", { ascending: false }),
+    sb.from("fichas").select("id,nome,mesa_id,pid:dados->>id,pagina:dados->>pagina").eq("dono_id", EU.id).order("criado_em", { ascending: false }),
+    sb.from("mesa_conteudo").select("id,nome").eq("tipo", "mundo").eq("dono_id", EU.id).order("criado_em", { ascending: false })
   ]);
+  const lw = $("#l-mundos"); lw.textContent = "";
+  if (mundos.error) lw.append(smEl("p", { class: "msg erro" }, traduzErro(mundos.error)));
+  else if (!mundos.data.length) lw.append(smEl("p", { class: "vazio" }, "Você ainda não criou nenhum mundo. Mundo é o mapa da campanha: o mestre desenha e liga às mesas dele."));
+  else mundos.data.forEach(w => {
+    const usa = (mesas.data || []).filter(m => m.mundo_id === w.id).map(m => m.nome);
+    lw.append(smEl("a", { class: "item", href: "mundos.html?w=" + w.id }, smEl("b", {}, w.nome || "Sem nome"), smEl("small", {}, usa.length ? "Usado em: " + usa.join(", ") : "Ainda não está em nenhuma mesa"), smEl("span", { class: "seta", "aria-hidden": "true" }, "›")));
+  });
   $("#ola").textContent = "Olá, " + ((jog.data && jog.data.nome) || EU.email) + ".";
   FICHAS = fichas.data || [];
   const nomeMesa = {}; (mesas.data || []).forEach(m => nomeMesa[m.id] = m.nome);
@@ -262,10 +301,22 @@ async function telaInicio() {
   /* chegou pelo convite com o código da mesa: já abre "Entrar numa mesa" preenchido */
   const cod = smParam("mesa");
   if (cod) {
-    $("#f-entrar").hidden = false; $("#in-cod").value = cod;
+    abrirAba("mesas"); $("#f-entrar").hidden = false; $("#in-cod").value = cod;
     const m = $("#entrar-msg"); m.className = "msg"; m.textContent = FICHAS.length ? "Escolha o personagem e toque em Entrar." : "Sua conta está pronta. Para entrar na mesa, crie primeiro um personagem em Criar ou editar personagens e volte aqui: o código da mesa é " + cod + ".";
   }
 }
+
+/* abas do Início: ?aba=mundos abre direto (as outras páginas usam para voltar ao lugar certo); a última aba fica lembrada */
+const ABAS = ["mesas", "personagens", "mundos", "conta"];
+function abaInicial() { const p = smParam("aba"); if (ABAS.includes(p)) return p; try { const s = sessionStorage.getItem("sm-aba"); if (ABAS.includes(s)) return s } catch (e) { } return "mesas" }
+function abrirAba(n) {
+  document.querySelectorAll("[data-painel]").forEach(s => s.hidden = s.dataset.painel !== n || (s.id === "s-chamar" && (!EU || EU.id !== ADMIN)));
+  document.querySelectorAll("#abas-app [data-aba]").forEach(b => b.setAttribute("aria-current", b.dataset.aba === n ? "page" : "false"));
+  try { sessionStorage.setItem("sm-aba", n) } catch (e) { }
+  if (n === "mundos") requestAnimationFrame(() => dispatchEvent(new Event("resize")));   // o globo foi medido com a aba escondida: medir de novo
+  scrollTo(0, 0);
+}
+document.querySelectorAll("#abas-app [data-aba]").forEach(b => b.onclick = () => abrirAba(b.dataset.aba));
 
 $("#bt-atualizar").onclick = smAtualizarApp;
 { const v = SM_VERSAO.replace(/^\d{4}(\d\d)(\d\d)(\w*)$/, "versão $2/$1 $3"); $("#versao-txt").textContent = v; $("#globo-tela .gt-versao").textContent = v }

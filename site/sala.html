@@ -62,7 +62,7 @@ body.mestre #dica{bottom:calc(76px + env(safe-area-inset-bottom,0px))}
 </head>
 <body>
 <div id="palco"><div id="cena"><img id="img" alt=""></div>
-  <div id="vazio"><div><b id="vazio-t">Carregando a sala…</b><span id="vazio-s"></span></div></div>
+  <div id="vazio"><div><b id="vazio-t">Carregando a sala…</b><span id="vazio-s"></span><button class="bt" id="bt-vazio-abrir" type="button" hidden style="margin-top:16px">Mostrar imagem ou mapa</button></div></div>
 </div>
 <iframe id="ficha" title="Sua ficha" hidden></iframe>
 <div class="pilula">
@@ -130,8 +130,9 @@ function vazio(sim, t, s) {
   $("#vazio").hidden = !sim; $("#cena").hidden = sim;
   if (sim) {
     $("#vazio-t").textContent = t || "O mestre ainda não mostrou nenhuma imagem.";
-    $("#vazio-s").textContent = s || (MESTRE ? "Abra a gaveta, embaixo, para mostrar uma imagem ou um mapa do mundo." : "Ela aparece aqui sozinha.");
+    $("#vazio-s").textContent = s || (MESTRE ? "Escolha o que os jogadores vão ver." : "Ela aparece aqui sozinha.");
   }
+  $("#bt-vazio-abrir").hidden = !(sim && MESTRE && !t);
 }
 let PESSOAS = 1;
 function atualizarSub() { const t = $("#t-sub").dataset.tit; $("#t-sub").textContent = [t, PESSOAS + " na sala"].filter(Boolean).join(" · ") }
@@ -192,6 +193,7 @@ let MINIS = [];
 let ABA = "imagens";
 $("#g-alca").onclick = () => { const c = $("#g-corpo"), abrir = c.hidden; c.hidden = !abrir; $("#g-alca").setAttribute("aria-expanded", abrir); if (abrir) abrirAba(ABA) };
 document.querySelectorAll("[data-aba]").forEach(b => b.onclick = () => abrirAba(b.dataset.aba));
+$("#bt-vazio-abrir").onclick = () => { if ($("#g-corpo").hidden) $("#g-alca").onclick() };   // atalho do meio da sala vazia: abre a gaveta
 function abrirAba(a) {
   ABA = a;
   document.querySelectorAll("[data-aba]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.aba === a)));
