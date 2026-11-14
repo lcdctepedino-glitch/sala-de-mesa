@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
-<meta name="sm-versao" content="20261113d">
+<meta name="sm-versao" content="20261113e">
 <link rel="icon" href="data:,">
 <title>Desenhar cidade · Mundo de UDA</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:wght@600&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
-<link rel="stylesheet" href="js/base.css?v=20261113d">
+<link rel="stylesheet" href="js/base.css?v=20261113e">
 <style>
 /* Cidade desenhada à mão (BETA, 13/11/2026). Escolhe o pincel e risca; "Ver em 3D" abre cidade.html?desenho=1.
    O desenho fica só neste aparelho (localStorage "sm-cidade-beta"); ainda não vai para o banco. */
@@ -27,6 +27,7 @@ canvas{touch-action:none;border-radius:10px;box-shadow:0 0 0 1px var(--line);max
 .ferr button{all:unset;cursor:pointer;display:grid;justify-items:center;gap:3px;padding:6px 2px;font-size:12px;color:var(--mute);border-radius:10px}
 .ferr button[aria-pressed=true]{color:var(--perg);background:var(--card)}
 .ferr i{width:22px;height:22px;border-radius:6px;display:block}
+.chave{display:flex;gap:10px;align-items:center;padding:4px max(14px,env(safe-area-inset-left,0px));font-size:14px;color:var(--mute)}.chave input{width:20px;height:20px;accent-color:#e6d8b5}
 .acoes{display:grid;grid-template-columns:1fr 1fr 1.6fr;gap:8px;padding:6px max(14px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px))}
 .acoes .bt{padding:11px 6px;font-size:14px}
 button:focus-visible{outline:2px solid var(--brasa)}
@@ -55,6 +56,7 @@ button:focus-visible{outline:2px solid var(--brasa)}
     <button type="button" data-t="praca" aria-pressed="false">Praça</button>
   </div>
   <p class="dica" id="dica"></p>
+  <label class="chave"><input type="checkbox" id="encher"><span>Encher o espaço vazio da muralha com casas</span></label>
   <div class="acoes">
     <button class="bt sec" id="bt-desfazer" type="button">Desfazer</button>
     <button class="bt sec" id="bt-limpar" type="button">Limpar</button>
@@ -65,14 +67,15 @@ button:focus-visible{outline:2px solid var(--brasa)}
 
 <script>
 const $ = s => document.querySelector(s), cv = $("#cv"), x = cv.getContext("2d"), MEIA = 150, CHAVE = "sm-cidade-beta";
-const DICAS = { muralha: "Risque em volta da cidade. A muralha fecha sozinha quando você solta.", rua: "Risque as ruas. Onde a rua cruza a muralha nasce um portão; sem rua, o portão fica ao sul.", agua: "Risque um rio. Para um lago, risque em volta e volte ao começo. Rua por cima da água vira ponte.", predio: "Escolha o tipo e toque onde ele fica. O resto da cidade ganha casas sozinho.", apagar: "Toque numa rua, rio ou prédio para apagar." };
+const DICAS = { muralha: "Risque em volta da cidade. A muralha fecha sozinha quando você solta.", rua: "Risque as ruas. Onde a rua cruza a muralha nasce um portão; sem rua, o portão fica ao sul.", agua: "Risque um rio. Para um lago, risque em volta e volte ao começo. Rua por cima da água vira ponte.", predio: "Escolha o tipo e toque onde ele fica.", apagar: "Toque numa rua, rio ou prédio para apagar." };
 let F = "muralha", TIPO = "casa", D = ler(), HIST = [], traco = null, LIMPAR = 0;
-function ler() { try { const d = JSON.parse(localStorage.getItem(CHAVE)); if (d && typeof d === "object") return { nome: d.nome || "Minha cidade", muralha: d.muralha || null, ruas: d.ruas || [], agua: d.agua || [], predios: d.predios || [] } } catch (e) { } return exemplo() }
+function ler() { try { const d = JSON.parse(localStorage.getItem(CHAVE)); if (d && typeof d === "object") return { nome: d.nome || "Minha cidade", encher: !!d.encher, muralha: d.muralha || null, ruas: d.ruas || [], agua: d.agua || [], predios: d.predios || [] } } catch (e) { } return exemplo() }
 /* primeira vez: um exemplo pronto, para ver como funciona */
-function exemplo() { return { nome: "Minha cidade", muralha: [[-70, -50], [0, -64], [70, -48], [82, 10], [55, 55], [-5, 62], [-62, 50], [-82, 5]], ruas: [[[0, 140], [0, 0], [-60, -20]], [[0, 0], [70, -10]]], agua: [[[-140, -110], [-100, -80], [-110, 40], [-140, 120]]], predios: [{ x: 0, z: -2, t: "praca" }, { x: -14, z: -30, t: "taverna" }, { x: 30, z: -35, t: "templo" }] } }
+function exemplo() { return { nome: "Minha cidade", encher: false, muralha: [[-70, -50], [0, -64], [70, -48], [82, 10], [55, 55], [-5, 62], [-62, 50], [-82, 5]], ruas: [[[0, 140], [0, 0], [-60, -20]], [[0, 0], [70, -10]]], agua: [[[-140, -110], [-100, -80], [-110, 40], [-140, 120]]], predios: [{ x: 0, z: -2, t: "praca" }, { x: -14, z: -30, t: "taverna" }, { x: 30, z: -35, t: "templo" }] } }
 function gravar() { D.nome = $("#nome").value.trim() || "Minha cidade"; try { localStorage.setItem(CHAVE, JSON.stringify(D)) } catch (e) { } }
 function guardarHist() { HIST.push(JSON.stringify(D)); if (HIST.length > 60) HIST.shift() }
 $("#nome").value = D.nome; $("#nome").oninput = gravar;
+$("#encher").checked = !!D.encher; $("#encher").onchange = e => { D.encher = e.target.checked; gravar() };
 
 /* metros ⇄ tela */
 const k = () => cv.width / (2 * MEIA), aTela = p => [(p[0] + MEIA) * k(), (p[1] + MEIA) * k()];
@@ -120,7 +123,7 @@ document.querySelectorAll(".ferr [data-f]").forEach(b => b.onclick = () => { F =
 document.querySelectorAll("#tipos [data-t]").forEach(b => b.onclick = () => { TIPO = b.dataset.t; document.querySelectorAll("#tipos [data-t]").forEach(c => c.setAttribute("aria-pressed", String(c === b))) });
 $("#bt-desfazer").onclick = () => { const h = HIST.pop(); if (h) { D = JSON.parse(h); gravar(); desenhar() } };
 $("#bt-limpar").onclick = e => { const b = e.currentTarget; if (!LIMPAR) { LIMPAR = 1; b.textContent = "Toque de novo"; setTimeout(() => { LIMPAR = 0; b.textContent = "Limpar" }, 2500); return }
-  LIMPAR = 0; b.textContent = "Limpar"; guardarHist(); D = { nome: D.nome, muralha: null, ruas: [], agua: [], predios: [] }; gravar(); desenhar() };
+  LIMPAR = 0; b.textContent = "Limpar"; guardarHist(); D = { nome: D.nome, encher: D.encher, muralha: null, ruas: [], agua: [], predios: [] }; gravar(); desenhar() };
 $("#bt-3d").onclick = () => { gravar(); location.href = "cidade.html?desenho=1&nome=" + encodeURIComponent(D.nome) };
 $("#dica").textContent = DICAS[F]; gravar(); desenhar();
 </script>

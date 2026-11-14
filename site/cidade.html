@@ -374,7 +374,7 @@ function fazerDesenho(D) {
     else if (t === "praca") { praca.disco(x, .11, z, 12, 12, 40, 3.2); fonte(pedra, grade, x, z); [[-7, -5, .5], [7.5, -4, -.5], [-8, 5, 2.3]].forEach(b => barraca(L, grade, R, x + b[0], z + b[1], b[2])); P.elipse(x, z, 12, 12, "#b1a78f"); ocup.push([x, z, 14]) }
     else { casa(L, R, { x, z, rot: ang, W: 6, C: 10, n: 2, porta: "A", dentro: true, grade }); mundo.abertas.push({ x, z, r: 6.5, W: 6, C: 10, rot: ang }); P.ret(x, z, 7.4, 11.4, -ang, "#b5512f"); ocup.push([x, z, 7]) } });
   /* o resto do espaço dentro da muralha ganha casas, viradas para a rua mais perto */
-  if (mur) {
+  if (mur && D.encher) {   // casas automáticas só quando ele liga a chave no desenho (13/11)
     const xs = mur.map(p => p[0]), zs = mur.map(p => p[1]); let nCasas = 0;
     const livre = (cx, cz, raio) => { for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283, x = cx + Math.cos(a) * raio, z = cz + Math.sin(a) * raio; if (!dentroPol(x, z, mur) || dLinha(x, z, [...mur, mur[0]]) < 6.5) return false } return !naRua(cx, cz, raio + .6) && !naAgua(cx, cz, raio + .8) && !ocup.some(o => Math.hypot(o[0] - cx, o[1] - cz) < o[2] + raio + 1.5) && !grade.ver(cx, cz) };
     for (let z = Math.min(...zs) + 8; z < Math.max(...zs) - 6; z += 11) for (let x = Math.min(...xs) + 8; x < Math.max(...xs) - 6; x += 9.5) {
