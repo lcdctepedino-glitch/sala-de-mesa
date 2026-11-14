@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="sm-versao" content="20261113j">
+<meta name="sm-versao" content="20261113k">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0b0b0d">
 <link rel="icon" href="data:,">
@@ -366,11 +366,15 @@ function fazerDesenho(D) {
   murs.forEach(mur => {
     const pts = []; for (let i = 0; i < mur.length; i++) { const a = mur[i], b = mur[(i + 1) % mur.length], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4.5)); for (let k = 0; k < n; k++) pts.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]) }
     const segs = pts.map((a, i) => { const b = pts[(i + 1) % pts.length]; return { cx: (a[0] + b[0]) / 2, cz: (a[1] + b[1]) / 2, len: Math.hypot(b[0] - a[0], b[1] - a[1]) + .3, r: Math.atan2(b[1] - a[1], b[0] - a[0]) } });
-    const portoes = []; segs.forEach(s => { if (naRua(s.cx, s.cz, 1.5) && !portoes.some(p => Math.hypot(p[0] - s.cx, p[1] - s.cz) < 14)) portoes.push([s.cx, s.cz, s.r]) });
+    /* portão só onde a rua ATRAVESSA a muralha (antes bastava passar perto, e rua paralela à muralha abria buracos) */
+    const cruza = (a, b, c, d) => { const r1 = [b[0] - a[0], b[1] - a[1]], r2 = [d[0] - c[0], d[1] - c[1]], den = r1[0] * r2[1] - r1[1] * r2[0]; if (Math.abs(den) < 1e-9) return null; const t = ((c[0] - a[0]) * r2[1] - (c[1] - a[1]) * r2[0]) / den, u = ((c[0] - a[0]) * r1[1] - (c[1] - a[1]) * r1[0]) / den; return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? [a[0] + t * r1[0], a[1] + t * r1[1]] : null };
+    const cortes = linhas => { const out = []; linhas.forEach(l => { for (let j = 1; j < l.length; j++) for (let i = 0; i < mur.length; i++) { const q = cruza(mur[i], mur[(i + 1) % mur.length], l[j - 1], l[j]); if (q) out.push([q[0], q[1], Math.atan2(mur[(i + 1) % mur.length][1] - mur[i][1], mur[(i + 1) % mur.length][0] - mur[i][0])]) } }); return out };
+    const portoes = []; cortes(ruas).forEach(q => { if (!portoes.some(p => Math.hypot(p[0] - q[0], p[1] - q[1]) < 14)) portoes.push(q) });
+    const passaRio = cortes(rios).filter(q => !naChao(q[0], q[1]));
     if (!portoes.length) { const zmax = Math.max(...segs.map(s => s.cz)), xm = mur.reduce((t, p) => t + p[0], 0) / mur.length, s = segs.filter(s => s.cz > zmax - 4 && !naAgua(s.cx, s.cz, 1)).sort((a, b) => Math.abs(a.cx - xm) - Math.abs(b.cx - xm))[0] || segs[0]; portoes.push([s.cx, s.cz, s.r]) }
     let desde = 99;
     segs.forEach(({ cx, cz, len, r }) => {
-      if (naRua(cx, cz, 1.5) || portoes.some(p => Math.hypot(p[0] - cx, p[1] - cz) < 3.6) || (!naChao(cx, cz) && rios.some(l => dLinha(cx, cz, l) < 5.5))) return;   // só rio abre a muralha; em lago ela é construída
+      if (portoes.some(p => Math.hypot(p[0] - cx, p[1] - cz) < 4.2) || passaRio.some(p => Math.hypot(p[0] - cx, p[1] - cz) < 6)) return;   // só abre no portão e onde um rio atravessa; em lago a muralha é construída
       pedra.caixa(cx, 0, cz, len, H, 3.4, r, 3); grade.ret(cx, cz, len, 4, r, 1); P.ret(cx, cz, len, 4, r, "#77705f");
       [-.27, .27].forEach(k => { const q = rp(cx, cz, k * len, 1.35, r), q2 = rp(cx, cz, k * len, -1.35, r); pedra.caixa(q[0], H, q[1], len * .26, 1, .7, r, 3); pedra.caixa(q2[0], H, q2[1], len * .26, 1, .7, r, 3) });
       if (++desde > 9) { desde = 0; pedra.caixa(cx, 0, cz, 5.4, H + 5, 5.4, r, 3); L.por("Roof_Tower_RoundTiles", mat(cx, H + 5, cz, -r)); grade.ret(cx, cz, 5.8, 5.8, r, 1); P.ret(cx, cz, 6, 6, r, "#a5492f") } });
