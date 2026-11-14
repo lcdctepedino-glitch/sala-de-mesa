@@ -240,6 +240,9 @@ body{--x-line:var(--line);--x-acc:var(--acc);--x-on:var(--paper);--x-bg:var(--pa
 #ret-pose{width:100%;box-sizing:border-box;margin-top:6px}
 .nota.erro{color:#e7a08f}
 
+/* dois toques rápidos não dão zoom no Safari (13/11); a pinça continua funcionando */
+html,button,a,input,select,label,[role=button]{touch-action:manipulation}
+
 body.embutido .barra-f{display:none}
 </style>
 </head>

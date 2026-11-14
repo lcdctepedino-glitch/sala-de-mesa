@@ -8,6 +8,8 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink)}
+/* dois toques rápidos não dão zoom no Safari (13/11: ele apertava Desfazer rápido e a tela aproximava); a pinça continua funcionando */
+html,button,a,input,select,label,[role=button]{touch-action:manipulation}
 body{font:16px/1.5 var(--f-ui);-webkit-text-size-adjust:100%}
 [hidden]{display:none!important}
 /* fundo animado (js/brasa.js): atrás de tudo, sem pegar toque */
